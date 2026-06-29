@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -6,5 +5,264 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+enum MemberRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  VIEWER
+}
+
+enum MemberStatus {
+  INVITED
+  ACTIVE
+  REMOVED
+}
+
+enum Visibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum EnvironmentType {
+  DEVELOPMENT
+  STAGING
+  PREVIEW
+  PRODUCTION
+}
+
+enum DeploymentStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum LogLevel {
+  INFO
+  WARNING
+  ERROR
+  DEBUG
+}
+
+enum MetricType {
+  CPU
+  MEMORY
+  LATENCY
+  NETWORK
+  DISK
+  REQUESTS
+  ERROR_RATE
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String    @map("password_hash")
+  fullName      String    @map("full_name")
+  avatarUrl     String?   @map("avatar_url")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  lastLogin     DateTime? @map("last_login")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  ownedOrganizations Organization[]       @relation("OrganizationOwner")
+  memberships        OrganizationMember[]
+  deployments        Deployment[]         @relation("TriggeredBy")
+  notifications      Notification[]
+}
+
+model Organization {
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  logoUrl   String?   @map("logo_url")
+  ownerId   String    @map("owner_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  owner     User                 @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members   OrganizationMember[]
+  projects  Project[]
+  alerts    Alert[]
+  auditLogs AuditLog[]
+
+  @@index([ownerId])
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  userId         String       @map("user_id")
+  role           MemberRole
+  joinedAt       DateTime     @default(now()) @map("joined_at")
+  invitedBy      String?      @map("invited_by")
+  status         MemberStatus
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId])
+}
+
+model Project {
+  id             String     @id @default(uuid())
+  organizationId String     @map("organization_id")
+  name           String
+  slug           String
+  description    String?
+  visibility     Visibility
+  defaultBranch  String     @map("default_branch")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  deletedAt      DateTime?  @map("deleted_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  repository   Repository?
+  environments Environment[]
+  alerts       Alert[]
+
+  @@index([organizationId])
+  @@index([slug])
+}
+
+model Repository {
+  id                 String     @id @default(uuid())
+  projectId          String     @unique @map("project_id")
+  githubRepositoryId String     @map("github_repository_id")
+  githubOwner        String     @map("github_owner")
+  repositoryName     String     @map("repository_name")
+  cloneUrl           String     @map("clone_url")
+  defaultBranch      String     @map("default_branch")
+  visibility         Visibility
+  webhookSecret      String     @map("webhook_secret")
+  isConnected        Boolean    @default(true) @map("is_connected")
+  lastSync           DateTime?  @map("last_sync")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  deletedAt          DateTime?  @map("deleted_at")
+
+  project Project @relation(fields: [projectId], references: [id])
+}
+
+model Environment {
+  id              String          @id @default(uuid())
+  projectId       String          @map("project_id")
+  name            String
+  environmentType EnvironmentType @map("environment_type")
+  domain          String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  project      Project       @relation(fields: [projectId], references: [id])
+  deployments  Deployment[]
+  healthChecks HealthCheck[]
+}
+
+model Deployment {
+  id            String           @id @default(uuid())
+  environmentId String           @map("environment_id")
+  triggeredById String           @map("triggered_by")
+  commitSha     String           @map("commit_sha")
+  commitMessage String           @map("commit_message")
+  branch        String
+  status        DeploymentStatus
+  duration      Int?
+  startedAt     DateTime?        @map("started_at")
+  finishedAt    DateTime?        @map("finished_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  environment Environment     @relation(fields: [environmentId], references: [id])
+  triggeredBy User            @relation("TriggeredBy", fields: [triggeredById], references: [id])
+  logs        DeploymentLog[]
+  metrics     Metric[]
+
+  @@index([environmentId])
+  @@index([status])
+  @@index([branch])
+  @@index([commitSha])
+}
+
+model DeploymentLog {
+  id           String   @id @default(uuid())
+  deploymentId String   @map("deployment_id")
+  timestamp    DateTime
+  logLevel     LogLevel @map("log_level")
+  message      String
+
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+}
+
+model Metric {
+  id           String     @id @default(uuid())
+  deploymentId String     @map("deployment_id")
+  metricType   MetricType @map("metric_type")
+  value        Float
+  recordedAt   DateTime   @map("recorded_at")
+
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+}
+
+model HealthCheck {
+  id            String   @id @default(uuid())
+  environmentId String   @map("environment_id")
+  status        String
+  responseTime  Int      @map("response_time")
+  statusCode    Int      @map("status_code")
+  checkedAt     DateTime @map("checked_at")
+
+  environment Environment @relation(fields: [environmentId], references: [id])
+}
+
+model Alert {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  projectId      String        @map("project_id")
+  severity       AlertSeverity
+  title          String
+  description    String
+  resolved       Boolean       @default(false)
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  performedBy    String   @map("performed_by")
+  action         String
+  resource       String
+  resourceId     String   @map("resource_id")
+  ipAddress      String   @map("ip_address")
+  userAgent      String   @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
 }
