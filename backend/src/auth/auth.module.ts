@@ -1,10 +1,14 @@
+import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
-const AuthController: any = require('./auth.controller');
-import { Module } from '@nestjs/common/decorators/modules/module.decorator';
+import { AuthController } from './auth.controller';
+import { JwtStrategy } from './jwt.strategy';
+import { GoogleStrategy } from './google.strategy';
+import { GithubStrategy } from './github.strategy';
+
 @Module({
-  imports: [JwtModule.register({})], // secrets passed per-sign call, so empty config here is fine
+  imports: [JwtModule.register({})],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy],
 })
 export class AuthModule {}
