@@ -1,87 +1,30 @@
 # 🐳 DOCKER.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Services
+# ⚠️ V1 Scope Notice
 
-Frontend
-
-Backend
-
-PostgreSQL
-
-Redis
-
-Celery
-
-Prometheus
-
-Grafana
-
-Nginx
+Full Docker Compose stack (Redis, Celery, Prometheus, Grafana, Nginx) is **post-V1**. If time
+remains on Day 10, a single `Dockerfile` for the backend is a nice-to-have — not required, since
+Railway/Render can build directly from the repo.
 
 ---
 
-# Compose
+# Services (V1, optional Day 10 stretch)
 
-docker-compose.yml
-
----
-
-# Networks
-
-frontend
-
-backend
-
-internal
+Backend, PostgreSQL
 
 ---
 
-# Volumes
+# Post-V1 Services
 
-postgres_data
-
-redis_data
-
-grafana_data
-
-prometheus_data
-
----
-
-# Environment
-
-.env
-
-.env.example
-
----
-
-# Commands
-
-Build
-
-Start
-
-Stop
-
-Logs
-
-Restart
-
----
-
-# Future
-
-Docker Swarm
-
-Kubernetes
+Redis, Celery, Prometheus, Grafana, Nginx — reintroduced alongside the infra they support (see
+`PROJECT_BIBLE.md → Future Scope`).
 
 ---
 
 # Status
 
-Planning
+Deferred (optional Day 10 stretch, not required for V1)

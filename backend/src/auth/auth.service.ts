@@ -1,108 +1,95 @@
-import {ConflictException,Injectable} from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
-import { UsersService } from '../users/users.service';
-import { UnauthorizedException } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
-import { JwtService } from '@nestjs/jwt';
-
-
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService: UsersService,
-    private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
-) {}
-  
+    private prisma: PrismaService,
+    private jwt: JwtService,
+  ) {}
 
-  async register(registerDto: RegisterDto) {
-    const existingEmail = await this.usersService.findByEmail(registerDto.email);
-
-    if (existingEmail) {
-      throw new ConflictException('Email is already registered.');
+  async register(dto: RegisterDto) {
+    const existing = await this.prisma.user.findFirst({
+      where: { OR: [{ email: dto.email }, { username: dto.username }] },
+    });
+    if (existing) {
+      throw new ConflictException('Email or username already in use');
     }
 
-    const existingUsername = await this.usersService.findByUsername(registerDto.username);
-
-    if (existingUsername) {
-      throw new ConflictException('Username is already taken.');
-    }
-
-    const passwordHash = await bcrypt.hash(registerDto.password, 12);
+    const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.user.create({
       data: {
-        email: registerDto.email,
-        username: registerDto.username,
-        fullName: registerDto.fullName,
+        email: dto.email,
+        username: dto.username,
         passwordHash,
+        fullName: dto.fullName,
+        authProviders: {
+          create: { provider: 'local', providerId: dto.email },
+        },
       },
     });
 
-    return {
-      message: 'User registered successfully.',
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        fullName: user.fullName,
+    const { passwordHash: _, ...safeUser } = user;
+    return safeUser;
+  }
+
+  async validateUser(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const { passwordHash, ...safeUser } = user;
+    return safeUser;
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.validateUser(dto.email, dto.password);
+    return this.generateTokens(user.id, user.email);
+  }
+
+  async generateTokens(userId: string, email: string) {
+    const accessSecret = process.env.JWT_ACCESS_SECRET as string;
+    const refreshSecret = process.env.JWT_REFRESH_SECRET as string;
+    const accessExpiry = process.env.JWT_ACCESS_EXPIRY as string;
+    const refreshExpiry = process.env.JWT_REFRESH_EXPIRY as string;
+
+    const accessToken = this.jwt.sign(
+      { sub: userId, email },
+      {
+        secret: accessSecret,
+        expiresIn: accessExpiry as any,
       },
-    };
-  }
+    );
 
-  async login(loginDto: LoginDto) {
-  const user = await this.usersService.findByEmail(loginDto.email);
+    const refreshToken = this.jwt.sign(
+      { sub: userId },
+      {
+        secret: refreshSecret,
+        expiresIn: refreshExpiry as any,
+      },
+    );
 
-  if (!user) {
-    throw new UnauthorizedException('Invalid email or password.');
-  }
+    // Store a hash of the refresh token (never the raw token) for revocation support
+    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // should match JWT_REFRESH_EXPIRY
 
-  const isPasswordValid = await bcrypt.compare(
-    loginDto.password,
-    user.passwordHash,
-  );
-
-  if (!isPasswordValid) {
-    throw new UnauthorizedException('Invalid email or password.');
-  }
-
-  const payload = {
-    sub: user.id,
-    email: user.email,
-    username: user.username,
-  };
-
-  const token = await this.jwtService.signAsync(payload);
-
-  return {
-    accessToken: token,
-  };
-}
-
-async googleLogin(user: any) {
-  let existingUser = await this.usersService.findByEmail(user.email);
-
-  if (!existingUser) {
-    existingUser = await this.usersService.create({
-      email: user.email,
-      username: user.email.split('@')[0],
-      fullName: user.fullName,
-      passwordHash: '', // no password for OAuth users
+    await (this.prisma as any).refreshToken.create({
+      data: { tokenHash, userId, expiresAt },
     });
+
+    return { accessToken, refreshToken };
   }
-
-  const token = await this.jwtService.signAsync({
-    sub: existingUser.id,
-    email: existingUser.email,
-    username: existingUser.username,
-  });
-
-  return {
-    accessToken: token,
-  };
-}
 }

@@ -1,21 +1,27 @@
 # 🏛️ ARCHITECTURE.md
 
-> Version: 1.0
+> Version: 2.0 (V1 MVP)
 
 ---
 
-# Architecture Style
+# ⚠️ V1 Scope Notice
+
+Redis, BullMQ, Prometheus, Grafana, Nginx, and WebSockets are removed from the V1 architecture.
+They remain the intended V2+ direction (see `PROJECT_BIBLE.md → Future Scope`) but are not part
+of what ships in 10 days.
+
+---
+
+# Architecture Style (V1)
 
 - Monolithic
-- Modular
+- Modular (NestJS modules)
 - Layered
 - API First
-- Domain Driven
-- Event Aware
 
 ---
 
-# High Level Architecture
+# High Level Architecture (V1)
 
 ```
                     Browser
@@ -30,17 +36,14 @@
 
                        │
 
-                  FastAPI Backend
+                  NestJS Backend
 
-     ┌──────────────┬──────────────┐
-     │              │              │
- PostgreSQL      Redis        Celery Workers
-     │              │              │
-     └──────────────┴──────────────┘
-                    │
-             Prometheus
-                    │
-                Grafana
+                       │
+
+                  PostgreSQL (Prisma)
+
+                       │
+        @nestjs/schedule (simulators + alert evaluation)
 ```
 
 ---
@@ -48,96 +51,46 @@
 # Backend Layers
 
 ```
-Client
-
-↓
-
-API
-
-↓
-
-Services
-
-↓
-
-Repositories
-
-↓
-
-Database
+Client → Controller → Service → Prisma → Database
 ```
 
 ---
 
 # Responsibilities
 
-## API
+## Controller
+- Validation (DTOs)
+- Auth guard
+- Response shaping
 
-- Validation
-- Authentication
-- Authorization
-- Serialization
+## Service
+- Business logic
+- Simulator orchestration (deployment/metrics/health)
+- Alert evaluation
 
----
-
-## Services
-
-- Business Logic
-- Workflows
-- Transactions
+## Prisma
+- CRUD, queries, persistence (schema unchanged)
 
 ---
 
-## Repository
-
-- CRUD
-- Queries
-- Persistence
-
----
-
-## Database
-
-- Storage
-- Constraints
-- Indexes
-
----
-
-# Folder Structure
+# Folder Structure (V1)
 
 ```
 backend/
-
-app/
-
-api/
-
-core/
-
-config/
-
-db/
-
-models/
-
-schemas/
-
-repositories/
-
-services/
-
-workers/
-
-middleware/
-
-events/
-
-websocket/
-
-utils/
-
-tests/
+  src/
+    auth/
+    organizations/
+    projects/
+    repositories/
+    environments/
+    deployments/
+    monitoring/       (metrics + health)
+    alerts/
+    notifications/
+    dashboard/
+    prisma/
+    common/           (guards, filters, pipes)
+  test/
 ```
 
 ---
@@ -146,202 +99,90 @@ tests/
 
 ```
 frontend/
-
-app/
-
-components/
-
-hooks/
-
-lib/
-
-services/
-
-types/
-
-providers/
-
-styles/
+  app/
+  components/
+  hooks/
+  lib/
+  services/
+  types/
+  providers/
 ```
 
 ---
 
-# External Services
+# External Services (V1)
 
-- GitHub API
-- SMTP
-- Prometheus
-- Grafana
+- GitHub REST API (read-only, manual sync)
+
+_Removed for V1: SMTP, Prometheus, Grafana._
 
 ---
 
-# Internal Services
+# Internal Services (V1)
 
 - Auth
-- Organization
-- Project
-- Deployment
-- Monitoring
-- Notification
-- Audit
+- Organizations
+- Projects
+- Repositories
+- Environments
+- Deployments (simulator)
+- Monitoring (simulator)
+- Alerts
+- Notifications
+
+_Removed for V1: dedicated Audit service (table exists, unused)._
 
 ---
 
 # Data Flow
 
 ```
-Frontend
-
-↓
-
-API
-
-↓
-
-Service
-
-↓
-
-Repository
-
-↓
-
-Database
-
-↓
-
-Response
+Frontend → API → Service → Prisma → Database → Response
 ```
 
 ---
 
-# Event Flow
+# "Event Flow" (V1 substitute)
+
+No Redis queue / Celery. Instead:
 
 ```
-GitHub Webhook
-
-↓
-
-Redis Queue
-
-↓
-
-Celery
-
-↓
-
-Database
-
-↓
-
-Notification
-
-↓
-
-Frontend
+Cron Tick (@nestjs/schedule) → Service Logic → Database Write → Alert Evaluation → Notification Row
+                                                                                        │
+                                                                          Frontend polls and picks it up
 ```
 
 ---
 
-# Logging Pipeline
+# Caching (V1)
 
-```
-Application
-
-↓
-
-Logger
-
-↓
-
-File
-
-↓
-
-Database
-
-↓
-
-Dashboard
-```
-
----
-
-# Monitoring Pipeline
-
-```
-Application
-
-↓
-
-Metrics Collector
-
-↓
-
-Prometheus
-
-↓
-
-Grafana
-```
-
----
-
-# Caching
-
-Redis
-
-Cache
-
-- Dashboard
-- Projects
-- Metrics
-- Sessions
+None. TanStack Query provides client-side caching/dedup, which is sufficient at MVP scale. Redis
+is deferred (see `CACHING.md`).
 
 ---
 
 # Principles
 
-- Separation of Concerns
-- SOLID
-- DRY
-- KISS
-- Repository Pattern
-- Dependency Injection
-- REST
-- Async where appropriate
+Separation of Concerns, SOLID, DRY, KISS, REST, async where it matters.
 
 ---
 
-# Status
-
-Planning
+# Status — V1 Stack (Actual)
 
 Frontend
-✅ Next.js
-✅ React
-✅ TypeScript
-✅ Tailwind CSS
-✅ shadcn/ui
-✅ TanStack Query
-✅ React Hook Form
-✅ Zod
+✅ Next.js · ✅ React · ✅ TypeScript · ✅ Tailwind CSS · ✅ shadcn/ui · ✅ TanStack Query
+✅ React Hook Form · ✅ Zod · ✅ recharts
+
 Backend
-✅ NestJS
-✅ TypeScript
-✅ Prisma
-✅ PostgreSQL
-✅ Redis
-✅ BullMQ
+✅ NestJS · ✅ TypeScript · ✅ Prisma · ✅ PostgreSQL · ✅ `@nestjs/schedule`
+
 DevOps
-✅ Docker
-✅ Docker Compose
-✅ GitHub Actions
-✅ Prometheus
-✅ Grafana
-✅ Nginx
+✅ GitHub Actions (lint/test/build) · ✅ Vercel (frontend) · ✅ Railway/Render (backend)
+❌ Docker Compose full stack (nice-to-have Day 10) · ❌ Prometheus/Grafana/Nginx (post-V1)
+
 Authentication
-✅ JWT
-✅ GitHub OAuth
+✅ JWT (access + refresh)
+❌ GitHub OAuth (post-V1)
+
 Real-Time
-✅ WebSockets
+❌ WebSockets (post-V1) — polling via TanStack Query in V1

@@ -1,141 +1,34 @@
 # 🚀 CACHING.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Technology
+# ⚠️ V1 Scope Notice
 
-Redis
-
----
-
-# Goals
-
-Reduce Database Load
-
-Improve API Response Time
-
-Store Sessions
-
-Temporary Data
+**No server-side cache in V1.** At MVP scale (one user's data, small tables, no real load) a
+cache adds operational complexity (Redis, invalidation logic) with no measurable benefit. Client-
+side caching via TanStack Query is sufficient.
 
 ---
 
-# Cached Resources
+# V1 Approach
 
-Dashboard
-
-Projects
-
-Repositories
-
-Metrics
-
-Notifications
-
-Sessions
+- TanStack Query caches and dedupes GET requests on the frontend, with short `staleTime` for
+  polled resources (deployments, metrics, notifications)
+- No Redis, no server-side cache-aside layer
 
 ---
 
-# Cache Strategy
+# Post-V1
 
-Cache Aside
-
----
-
-# Flow
-
-Request
-
-↓
-
-Redis
-
-↓
-
-Hit
-
-↓
-
-Return
-
-OR
-
-↓
-
-Miss
-
-↓
-
-Database
-
-↓
-
-Store in Redis
-
-↓
-
-Return
-
----
-
-# TTL
-
-Dashboard
-
-60 sec
-
-Projects
-
-5 min
-
-Metrics
-
-30 sec
-
-Sessions
-
-30 days
-
----
-
-# Cache Invalidation
-
-Project Updated
-
-↓
-
-Delete Cache
-
-↓
-
-Next Request Rebuilds Cache
-
----
-
-# Don't Cache
-
-Passwords
-
-JWT Secrets
-
-Audit Logs
-
-Sensitive Data
-
----
-
-# Future
-
-Distributed Cache
-
-Redis Cluster
-
-Pub/Sub
+Reintroduce Redis (cache-aside) once there's real multi-user load and measured slow endpoints
+worth caching — dashboard aggregation and metrics queries are the likely first candidates. TTLs
+and invalidation strategy from the original plan (dashboard 60s, projects 5min, metrics 30s,
+sessions 30 days) remain a reasonable starting point when that day comes.
 
 ---
 
 # Status
 
-Planning
+Deferred (Post-V1)

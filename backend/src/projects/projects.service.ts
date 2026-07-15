@@ -1,15 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateProjectDto } from './dto/create-project.dto';
 
 @Injectable()
 export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.project.findMany();
+  create(dto: CreateProjectDto) {
+    return this.prisma.project.create({ data: dto });
   }
 
- create() {
-  throw new Error("Not implemented yet.");
-}
+  findAll(organizationId: string) {
+    return this.prisma.project.findMany({ where: { organizationId } });
+  }
+
+  findOne(id: string) {
+    return this.prisma.project.findUnique({ where: { id } });
+  }
 }

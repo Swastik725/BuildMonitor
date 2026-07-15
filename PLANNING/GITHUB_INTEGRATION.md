@@ -1,138 +1,75 @@
 # 🐙 GITHUB_INTEGRATION.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Goals
+# ⚠️ V1 Scope Notice
 
-- GitHub OAuth
-- Repository Import
-- Webhooks
-- Commit Tracking
-
----
-
-# OAuth Flow
-
-User
-
-↓
-
-GitHub Login
-
-↓
-
-Authorization Code
-
-↓
-
-Access Token
-
-↓
-
-Store GitHub Account
-
-↓
-
-Sync Repositories
+**No OAuth, no webhooks in V1.** Setting up a GitHub OAuth App + webhook infrastructure correctly
+(and securely) is itself multiple days of work — not worth it for a 10-day MVP when the actual
+UI/monitoring features are the point. V1 uses a manual, read-only connection instead.
 
 ---
 
-# Features
+# Goals (V1)
 
-Repository List
-
-Repository Connect
-
-Repository Sync
-
-Webhook Verification
-
-Commit History
-
-Branch Tracking
+- Connect a public repository by owner + name
+- Fetch basic repo metadata (default branch, latest commit) via the GitHub REST API
+  (unauthenticated or with a single server-side personal access token — not per-user OAuth)
+- Manual "Sync" button to refresh that metadata on demand
 
 ---
 
-# Webhooks
+# V1 Flow
 
-push
-
-pull_request
-
-create
-
-delete
-
-release
-
-ping
+```
+User enters "owner/repo"
+   ↓
+Backend calls GitHub REST API (GET /repos/{owner}/{repo}, GET /repos/{owner}/{repo}/commits)
+   ↓
+Store repository_name, github_owner, default_branch, clone_url, last_sync
+   ↓
+Display in UI; "Sync" re-runs the same call on demand
+```
 
 ---
 
-# Processing Flow
+# Features (V1)
 
-GitHub
+- Repository connect (manual)
+- Repository metadata display
+- Manual sync
 
-↓
-
-Webhook
-
-↓
-
-Verify Signature
-
-↓
-
-Redis
-
-↓
-
-Celery
-
-↓
-
-Database
-
-↓
-
-Notification
+_Removed for V1: OAuth flow, automatic sync, webhook processing (push/pull_request/etc), commit
+history beyond "latest commit", branch tracking beyond `default_branch`._
 
 ---
 
-# Database
+# Database (V1)
 
-github_accounts
-
+```
 repositories
-
-deployments
-
----
-
-# Security
-
-Webhook Secret
-
-Signature Validation
-
-Encrypted Tokens
-
-Rate Limits
+```
+(`github_accounts` table is post-V1, once OAuth exists.)
 
 ---
 
-# Future
+# Security (V1)
 
-GitLab
+- Store the server-side GitHub token (if used) as an environment variable, never in the DB or
+  logs
+- Handle GitHub API rate limits gracefully (surface a clear error, don't crash)
 
-Bitbucket
+---
 
-Azure DevOps
+# Post-V1
+
+GitHub OAuth (login + per-user tokens), real webhooks (push/pull_request/release), commit
+history, branch tracking, GitLab/Bitbucket/Azure DevOps support.
 
 ---
 
 # Status
 
-Planning
+Building (V1)

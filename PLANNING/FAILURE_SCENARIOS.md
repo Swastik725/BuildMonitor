@@ -1,93 +1,72 @@
 # 💥 FAILURE_SCENARIOS.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Authentication
+# ⚠️ V1 Scope Notice
+
+Redis/Celery failure scenarios removed — not part of V1 architecture. GitHub failure scenarios
+narrowed to what's relevant for a manual, read-only, no-webhook integration.
+
+---
+
+# Authentication (V1)
 
 - Expired JWT
 - Invalid JWT
-- Expired Refresh Token
-- Duplicate Registration
+- Reused/revoked refresh token
+- Duplicate registration
 
 ---
 
-# GitHub
+# GitHub (V1)
 
-- Invalid OAuth
-- Invalid Webhook Signature
-- API Rate Limit
-- Repository Deleted
+- Repo not found / private repo without access
+- GitHub API rate limit hit during manual sync
+- Repository renamed or deleted upstream since last sync
+
+_Removed (post-V1, no webhooks in V1): invalid OAuth, invalid webhook signature._
 
 ---
 
 # Database
 
-- Connection Lost
-- Slow Queries
-- Migration Failure
+- Connection lost
+- Slow queries
+- Migration failure
 
 ---
 
-# Redis
+# Deployments (Simulated)
 
-- Redis Down
-- Cache Miss
-- Queue Failure
-
----
-
-# Celery
-
-- Worker Crash
-- Job Retry
-- Job Timeout
+- Simulated deployment resolves to FAILED (this is expected/intentional behavior, not a bug —
+  it's what feeds the Alerts feature)
+- Simulator tick runs while the deployment row has been deleted (guard against this)
 
 ---
 
-# Deployments
+# Monitoring (Simulated)
 
-- Build Failed
-- Deployment Failed
-- Rollback Failed
-
----
-
-# Monitoring
-
-- Missing Metrics
-- Failed Health Check
-- Alert Not Sent
+- Simulated metric/health job fails to run on schedule (log it, don't crash the app)
+- Alert not created due to evaluator error (log + retry next tick)
 
 ---
 
 # Recovery Strategy
 
-Retry
-
-↓
-
-Log
-
-↓
-
-Notify
-
-↓
-
-Graceful Failure
+```
+Retry (next tick) → Log → Graceful failure (never crash the whole app for one bad job run)
+```
 
 ---
 
-# Future
+# Post-V1
 
-- Circuit Breakers
-- Dead Letter Queues
-- Backup Workers
+Circuit breakers, dead letter queues, backup workers, Redis/Celery-specific failure handling.
 
 ---
 
 # Status
 
-Planning
+Building (V1)

@@ -1,43 +1,26 @@
 # 🤝 CONTRIBUTING.md
 
-## Branch Strategy
+Version: 2.0 (V1 MVP — solo dev, 10 day sprint)
 
-- main
-- develop
-- feature/*
-- hotfix/*
+---
+
+## Branch Strategy (V1)
+
+- `main` — always deployable
+- `feature/*` — one branch per roadmap item from `ROADMAP.md`
+
+(`develop` and `hotfix/*` are dropped for V1 — unnecessary ceremony for a solo 10-day build.)
 
 ---
 
 ## Commit Convention
 
-feat:
-
-fix:
-
-docs:
-
-refactor:
-
-test:
-
-perf:
-
-chore:
+feat: / fix: / docs: / refactor: / test: / perf: / chore:
 
 ---
 
-## Pull Requests
+## Rules (V1)
 
-- Small
-- Focused
-- Tested
-- Documented
-
----
-
-## Rules
-
-- No direct push to main
-- Tests before merge
-- Update documentation
+- No direct push to `main` once the app is live (Day 10 onward) — small feature branches instead
+- Update `ROADMAP.md` checkboxes as items complete, so progress stays honest against the 10-day
+  clock

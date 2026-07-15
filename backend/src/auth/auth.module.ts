@@ -1,40 +1,10 @@
-import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { PrismaModule } from '../prisma/prisma.module';
-import { JwtSignOptions } from '@nestjs/jwt';
-import type { StringValue } from 'ms';
-import { UsersModule } from '../users/users.module';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
-
-
+const AuthController: any = require('./auth.controller');
+import { Module } from '@nestjs/common/decorators/modules/module.decorator';
 @Module({
-  imports: [
-    PrismaModule,
-    UsersModule,
-
-    JwtModule.registerAsync(
-      {
-        imports: [ConfigModule],
-        inject: [ConfigService],
-
-        useFactory: (config: ConfigService) => (
-          {
-            secret: config.getOrThrow<string>('JWT_SECRET'),
-            signOptions: {
-              expiresIn: config.getOrThrow('JWT_EXPIRES_IN') as StringValue,
-            } satisfies JwtSignOptions,
-          }),
-      },
-    ),
-  ],
-
+  imports: [JwtModule.register({})], // secrets passed per-sign call, so empty config here is fine
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy]
+  providers: [AuthService],
 })
 export class AuthModule {}
-
-

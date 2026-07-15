@@ -1,6 +1,13 @@
 # 📡 API_SPECIFICATION.md
 
-Version 1.0
+Version 2.0 (V1 MVP)
+
+---
+
+# ⚠️ V1 Scope Notice
+
+Endpoints below are grouped into **V1** (build these) and **Post-V1** (documented for
+completeness, not built in the 10-day sprint).
 
 ---
 
@@ -12,198 +19,104 @@ Version 1.0
 
 ---
 
-# Authentication
+# V1 Endpoints
 
+## Authentication
 ```
 POST /auth/register
-
 POST /auth/login
-
 POST /auth/logout
-
 POST /auth/refresh
-
-POST /auth/forgot-password
-
-POST /auth/reset-password
-
-GET /auth/me
+GET  /auth/me
 ```
 
----
-
-# Organizations
-
+## Organizations
 ```
-GET /organizations
-
-POST /organizations
-
+GET   /organizations/me       (the auto-created personal org)
 PATCH /organizations/{id}
-
-DELETE /organizations/{id}
 ```
 
----
-
-# Members
-
+## Projects
 ```
-GET /organizations/{id}/members
-
-POST /organizations/{id}/invite
-
-PATCH /members/{id}
-
-DELETE /members/{id}
-```
-
----
-
-# Projects
-
-```
-GET /projects
-
-GET /projects/{id}
-
-POST /projects
-
-PATCH /projects/{id}
-
+GET    /projects
+GET    /projects/{id}
+POST   /projects
+PATCH  /projects/{id}
 DELETE /projects/{id}
 ```
 
----
-
-# Repository
-
+## Repository
 ```
-POST /repositories/connect
-
-GET /repositories
-
-GET /repositories/{id}
-
-PATCH /repositories/{id}
-
+POST   /repositories/connect     { owner, name }
+GET    /repositories/{id}
+POST   /repositories/{id}/sync   (manual pull of latest commit/branch via GitHub REST API)
 DELETE /repositories/{id}
 ```
 
----
-
-# GitHub
-
+## Environments
 ```
-GET /github/oauth
-
-GET /github/callback
-
-POST /github/webhook
-
-POST /github/sync
-```
-
----
-
-# Environments
-
-```
-GET /environments
-
-POST /environments
-
-PATCH /environments/{id}
-
+GET    /environments?projectId=
+POST   /environments
+PATCH  /environments/{id}
 DELETE /environments/{id}
 ```
 
----
-
-# Deployments
-
+## Deployments
 ```
-POST /deployments
-
-GET /deployments
-
-GET /deployments/{id}
-
-PATCH /deployments/{id}
-
-DELETE /deployments/{id}
+POST /deployments                { environmentId, branch, commitSha?, commitMessage? }
+GET  /deployments?environmentId=
+GET  /deployments/{id}
 ```
+(No manual PATCH/DELETE in V1 — status changes only through the simulator.)
 
----
-
-# Deployment Logs
-
+## Deployment Logs
 ```
 GET /deployments/{id}/logs
-
-GET /logs
 ```
 
----
-
-# Metrics
-
+## Metrics
 ```
-GET /metrics
-
-GET /metrics/{id}
+GET /environments/{id}/metrics?type=&from=&to=
 ```
 
----
-
-# Health Checks
-
+## Health
 ```
-GET /health
-
-GET /health/{environment}
+GET /environments/{id}/health
 ```
 
----
-
-# Alerts
-
+## Alerts
 ```
-GET /alerts
-
-POST /alerts
-
-PATCH /alerts/{id}
-
-DELETE /alerts/{id}
+GET   /alerts?resolved=
+PATCH /alerts/{id}/resolve
 ```
 
----
-
-# Notifications
-
+## Notifications
 ```
-GET /notifications
-
+GET   /notifications
 PATCH /notifications/{id}/read
+```
 
-DELETE /notifications/{id}
+## Dashboard
+```
+GET /dashboard      (aggregated counts, recent deployments, recent alerts)
 ```
 
 ---
 
-# Audit Logs
+# Post-V1 Endpoints (documented, not built)
 
 ```
-GET /audit
-```
-
----
-
-# Search
-
-```
-GET /search
+POST /auth/forgot-password
+POST /auth/reset-password
+GET  /github/oauth
+GET  /github/callback
+POST /github/webhook
+GET  /organizations/{id}/members
+POST /organizations/{id}/invite
+PATCH /members/{id}
+DELETE /members/{id}
+GET  /audit
+GET  /search
 ```
 
 ---
@@ -235,4 +148,4 @@ GET /search
 
 # Status
 
-Planning
+Building (V1)

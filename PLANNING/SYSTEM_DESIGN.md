@@ -1,765 +1,232 @@
 # 🏗️ SYSTEM_DESIGN.md
 
-> **Document Version:** 1.0
+> **Document Version:** 2.0 (V1 MVP)
 >
-> **Status:** Planning
+> **Status:** Building
 >
 > **Project:** BuildMonitor
 
 ---
 
-# 1. What is BuildMonitor?
+# ⚠️ V1 Scope Notice
 
-BuildMonitor is a developer platform that allows software teams to manage projects, monitor deployments, track application health, analyze logs, visualize metrics, and receive alerts from a centralized dashboard.
+This document originally designed the full long-term system (FastAPI, Celery, Redis,
+Prometheus/Grafana, real GitHub OAuth/webhooks). That target architecture is preserved in
+`PROJECT_BIBLE.md → Future Scope`. Everything below describes what's actually being built in the
+10-day V1 sprint, on the real stack (NestJS + Prisma), with simulated infra where real infra
+would take too long to stand up safely.
 
-It is inspired by tools like GitHub Actions, Vercel, Railway, Datadog, Better Stack, Grafana, and Sentry—not as a clone, but as an educational platform that combines the engineering concepts behind them.
+---
 
-The objective is to build a production-inspired software system that demonstrates modern backend architecture, full-stack engineering, observability, authentication, asynchronous processing, and clean software design.
+# 1. What is BuildMonitor (V1)?
+
+A developer platform where a user can register, create a project, connect a GitHub repo
+(read-only), define environments, trigger deployments, and watch a simulated
+deployment/monitoring pipeline produce logs, metrics, health checks, and alerts.
 
 ---
 
 # 2. Goals
 
-## Functional Goals
+## Functional Goals (V1)
 
-The platform should allow users to:
-
-* Register and authenticate
-* Connect GitHub
-* Import repositories
-* Create projects
+* Register / login
+* Create a project, connect a repository (manual owner/repo, no OAuth)
 * Create environments
-* Track deployments
+* Trigger a deployment and watch it progress and complete
 * View deployment logs
-* Monitor application health
-* View metrics
-* Receive alerts
-* Manage notifications
+* View simulated metrics and health status
+* Receive alerts and in-app notifications
+
+## Engineering Goals (V1)
+
+* Layered NestJS architecture (controller → service → Prisma)
+* JWT authentication done correctly (access + refresh)
+* A believable, well-structured simulator standing in for real deploy/monitoring infra
+* Clean REST API, versioned (`/api/v1`)
+* Basic but real test coverage on the critical path
 
 ---
 
-## Engineering Goals
-
-The project should demonstrate:
-
-* Clean Architecture
-* Layered Backend Design
-* REST API Design
-* Authentication
-* Authorization
-* Background Workers
-* Redis
-* Docker
-* CI/CD
-* PostgreSQL
-* Caching
-* Logging
-* Monitoring
-* Secure Development Practices
-
----
-
-# 3. Non Functional Requirements
-
-## Scalability
-
-The architecture should support multiple users and multiple projects.
-
----
+# 3. Non-Functional Requirements (V1)
 
 ## Maintainability
-
-Every module should be isolated.
-
-Business logic should never live inside API routes.
-
----
-
-## Extensibility
-
-New services should be easy to add.
-
-Example:
-
-Slack notifications
-
-Discord notifications
-
-SMS alerts
-
-Future cloud integrations
-
----
+Controller/service separation. No business logic in controllers.
 
 ## Reliability
-
-Failures in one service should not crash the whole application.
-
-Background workers should process tasks independently.
-
----
+Simulator jobs run independently per environment; one failing job shouldn't take down others.
 
 ## Security
+Passwords hashed (bcrypt/argon2). JWT auth. Input validation on every endpoint. No secrets in
+source.
 
-Passwords must never be stored.
-
-Secrets must never be hardcoded.
-
-Authentication must use JWT.
-
-Authorization must use roles.
-
-Sensitive data must be encrypted whenever appropriate.
+## Explicitly deferred to post-V1
+Horizontal scalability, multi-region, real background job durability (BullMQ/Redis), real-time
+push (WebSockets) — see `PROJECT_BIBLE.md → Future Scope`.
 
 ---
 
-# 4. Target Users
+# 4. Target Users (V1)
 
-## Individual Developers
-
-Managing personal projects.
-
----
-
-## Students
-
-Learning deployment and monitoring.
+Individual developers and students building/reviewing a portfolio project. (Teams/orgs are
+schema-ready but not exposed in V1 UI.)
 
 ---
 
-## Startups
+# 5. User Journey (V1)
 
-Managing internal applications.
+```
+Register → Land in personal org → Create project → Connect repository
+   → Create environment(s) → Trigger deployment → Watch status/logs update
+   → View metrics + health on dashboard → Get alerted on failure/threshold breach
+   → See notification in bell icon
+```
 
----
-
-## Engineering Teams (Future)
-
-Collaborative monitoring.
-
----
-
-# 5. User Journey
-
-A new user visits the platform.
-
-↓
-
-Registers an account.
-
-↓
-
-Verifies email.
-
-↓
-
-Logs in.
-
-↓
-
-Creates a workspace.
-
-↓
-
-Connects GitHub.
-
-↓
-
-Imports repositories.
-
-↓
-
-Creates a project.
-
-↓
-
-Creates environments.
-
-↓
-
-Deploys application.
-
-↓
-
-Monitors deployment.
-
-↓
-
-Views metrics.
-
-↓
-
-Receives alerts.
-
-↓
-
-Manages future deployments.
+(Email verification, GitHub OAuth login, and org invites are removed from this journey for V1.)
 
 ---
 
-# 6. Core Modules
+# 6. Core Modules (V1)
 
-The platform consists of the following major systems.
+```
+Auth → Organizations (personal, auto-created) → Projects → Repository (manual connect)
+   → Environments → Deployments (simulated) → Metrics/Health (simulated) → Alerts → Notifications
+```
 
-Authentication
-
-↓
-
-Organization Management
-
-↓
-
-Project Management
-
-↓
-
-GitHub Integration
-
-↓
-
-Deployment Management
-
-↓
-
-Monitoring
-
-↓
-
-Logging
-
-↓
-
-Alerting
-
-↓
-
-Notifications
-
-↓
-
-Administration
-
-Each module should remain independent.
-
-Communication should happen through APIs or background jobs.
+Removed from V1 module list: GitHub OAuth/Webhooks, Background Workers (Celery/Redis),
+Administration/Audit.
 
 ---
 
-# 7. High Level Architecture
+# 7. High-Level Architecture (V1)
 
 ```
                      Browser
 
                         │
 
-          Next.js Frontend (React)
+          Next.js Frontend (React, polling)
 
                         │
 
-              HTTPS REST API
+              HTTPS REST API (/api/v1)
 
                         │
 
-                  FastAPI Backend
+                  NestJS Backend
 
-      ┌──────────┬──────────┬──────────┐
+                        │
 
-      │          │          │
+                  PostgreSQL (Prisma)
 
- PostgreSQL    Redis      Celery
+                        │
 
-      │          │          │
+     @nestjs/schedule cron jobs (deployment / metrics / health simulators, alert evaluation)
+```
 
-      │          │          │
+No Redis. No Celery. No Prometheus/Grafana. No Nginx. These return in the post-V1 roadmap once
+there's real infrastructure or real async load to justify them.
 
- Prometheus   Cache     Background Jobs
+---
 
-      │
+# 8. Backend Architecture (V1)
 
- Grafana
+```
+Controller (validation, auth guard)
+      ↓
+Service (business logic, simulator scheduling)
+      ↓
+Prisma (persistence)
+      ↓
+PostgreSQL
 ```
 
 ---
 
-# 8. Backend Architecture
-
-The backend follows a layered architecture.
+# 9. Frontend Architecture (V1)
 
 ```
-API Layer
-
-↓
-
-Service Layer
-
-↓
-
-Repository Layer
-
-↓
-
-Database
+Pages (Next.js App Router) → Layouts → Components → Hooks (TanStack Query, polling) → API Client → Backend
 ```
 
 ---
 
-## API Layer
+# 10. "Background Processing" in V1
 
-Responsibilities
+Instead of Celery + Redis, V1 uses **in-process scheduled jobs** (`@nestjs/schedule`) inside the
+NestJS app itself:
 
-* Validate requests
-* Authentication
-* Authorization
-* Return responses
+* Deployment simulator — advances QUEUED → RUNNING → SUCCESS/FAILED on a timer, writing log rows
+* Metrics simulator — inserts a metric row per active environment on an interval
+* Health check simulator — pings the environment's domain if set, otherwise fabricates a result
+* Alert evaluator — runs after each metric/health/deployment write, checks thresholds
 
-No business logic.
-
----
-
-## Service Layer
-
-Responsibilities
-
-Business logic.
-
-Validation.
-
-Workflow orchestration.
-
-External integrations.
+This is a legitimate, explicitly-scoped substitute for a real job queue — call it out as a design
+decision (see ADR-013), not something to be defensive about.
 
 ---
 
-## Repository Layer
+# 11–16. Flows (V1)
 
-Responsibilities
+**Auth:** Login → validate credentials → issue access + refresh JWT → authenticated requests →
+refresh → logout.
 
-Database communication only.
+**Deployment:** User triggers deploy → row created (QUEUED) → cron picks it up → RUNNING → logs
+generated → SUCCESS/FAILED → metrics/alerts follow → notification created.
 
-No business rules.
+**Monitoring:** Cron tick → metric/health row written → alert evaluator checks thresholds →
+alert + notification created if breached → frontend polls and reflects it.
 
----
+**Logging:** Deployment logs are stored in Postgres and paginated over the API (no separate log
+pipeline/ELK stack in V1).
 
-## Database Layer
-
-Responsibilities
-
-Persist application data.
-
----
-
-# 9. Frontend Architecture
-
-```
-Pages
-
-↓
-
-Layouts
-
-↓
-
-Components
-
-↓
-
-Hooks
-
-↓
-
-API Client
-
-↓
-
-Backend
-```
-
-The frontend should remain mostly responsible for presentation.
-
-Business logic belongs in the backend.
+**Notifications:** In-app only, created directly on the relevant event, read via
+`GET /notifications`, marked read via `PATCH /notifications/{id}/read`. No email in V1.
 
 ---
 
-# 10. Background Processing
+# 17. Security Model (V1)
 
-Some operations should never block HTTP requests.
-
-Examples
-
-* Sending email
-* Processing GitHub webhooks
-* Health checks
-* Deployment polling
-* Notification delivery
-* Metrics collection
-
-These will be handled by Celery workers.
+* JWT access + refresh
+* Password hashing (bcrypt/argon2)
+* Every write endpoint validated (class-validator DTOs) and scoped to the requesting user's
+  organization
+* Rate limiting on auth endpoints
+* No OAuth, no webhook signature verification needed in V1 (no webhooks in V1)
 
 ---
 
-# 11. Data Flow
+# 18. Failure Scenarios (V1 relevant subset)
 
-Example: Creating a Project
-
-```
-User
-
-↓
-
-Frontend
-
-↓
-
-POST /projects
-
-↓
-
-FastAPI
-
-↓
-
-Service Layer
-
-↓
-
-Repository
-
-↓
-
-Database
-
-↓
-
-Success Response
-
-↓
-
-Frontend Updates UI
-```
-
----
-
-# 12. Authentication Flow
-
-```
-Login Request
-
-↓
-
-Validate Credentials
-
-↓
-
-Generate Access Token
-
-↓
-
-Generate Refresh Token
-
-↓
-
-Return Tokens
-
-↓
-
-Authenticated Requests
-
-↓
-
-Protected Endpoints
-```
-
-OAuth flow will be documented separately.
-
----
-
-# 13. Deployment Flow
-
-```
-User clicks Deploy
-
-↓
-
-Deployment Record Created
-
-↓
-
-Worker Picks Task
-
-↓
-
-Deployment Begins
-
-↓
-
-Logs Generated
-
-↓
-
-Status Updated
-
-↓
-
-Metrics Updated
-
-↓
-
-Notification Sent
-```
-
----
-
-# 14. Monitoring Flow
-
-```
-Worker
-
-↓
-
-Collect Metrics
-
-↓
-
-Store Metrics
-
-↓
-
-Prometheus
-
-↓
-
-Grafana
-
-↓
-
-Frontend Dashboard
-```
-
----
-
-# 15. Logging Flow
-
-Application
-
-↓
-
-Structured Logger
-
-↓
-
-Database / File
-
-↓
-
-Frontend Viewer
-
----
-
-Future:
-
-Log Streaming via WebSockets.
-
----
-
-# 16. Notification Flow
-
-Trigger
-
-↓
-
-Notification Service
-
-↓
-
-Email
-
-↓
-
-Database
-
-↓
-
-Bell Icon
-
-↓
-
-User
-
----
-
-# 17. Security Model
-
-Authentication
-
-JWT
-
-Refresh Tokens
-
-OAuth
-
----
-
-Authorization
-
-RBAC
-
-Future:
-
-Organization-level permissions.
-
----
-
-Security Features
-
-* Password hashing
-* Input validation
-* Rate limiting
-* CORS
-* CSRF protection where applicable
-* Secure cookies (future)
-* Environment variables
-* Secret management
-* Audit logs
-
----
-
-# 18. Failure Scenarios
-
-Examples
-
-GitHub unavailable.
-
-Redis unavailable.
-
-Database restart.
-
-Worker crashes.
-
-Deployment fails.
-
-Webhook received twice.
-
-User refreshes during deployment.
-
-Network timeout.
-
-API timeout.
-
-Invalid JWT.
-
-Expired refresh token.
-
-Deleted repository.
-
-Every important failure should be handled gracefully.
+Database restart, invalid/expired JWT, GitHub API rate limit on manual sync, deployment "fails"
+(simulated), duplicate registration. See `FAILURE_SCENARIOS.md`.
 
 ---
 
 # 19. Engineering Principles
 
-Single Responsibility Principle
-
-Dependency Injection
-
-Repository Pattern
-
-Service Layer Pattern
-
-DRY
-
-KISS
-
-SOLID
-
-RESTful APIs
-
-Versioned APIs
-
-Idempotent operations where required
+Single Responsibility, Dependency Injection (native to NestJS), DRY, KISS, RESTful, versioned API.
 
 ---
 
-# 20. Out of Scope (Version 1)
+# 20. Out of Scope (V1)
 
-Microservices
-
-Kubernetes
-
-Distributed databases
-
-Multi-region deployments
-
-Terraform
-
-Autoscaling
-
-Serverless
-
-Mobile applications
-
-These may be explored after Version 1 is complete.
+Microservices, Kubernetes, distributed databases, multi-region, Terraform, autoscaling,
+serverless, mobile apps, real GitHub OAuth/webhooks, Redis/Celery, Prometheus/Grafana,
+WebSockets, RBAC beyond owner, team invites, audit logs, email, 2FA.
 
 ---
 
-# 21. Questions to Answer Before Coding
+# 21. Success Criteria (V1)
 
-## Product
-
-* Who owns a project?
-* Can users have multiple projects?
-* What is an environment?
-* Can repositories belong to multiple projects?
-
----
-
-## Database
-
-* Which entities exist?
-* Which entities own others?
-* Which relationships are many-to-many?
-
----
-
-## Backend
-
-* How should APIs be versioned?
-* How should errors be standardized?
-* How should background jobs be retried?
-
----
-
-## Frontend
-
-* How should state be managed?
-* Which data should be cached?
-* Which pages require authentication?
-
----
-
-## Infrastructure
-
-* How will Docker Compose orchestrate services?
-* How will secrets be managed?
-* How will logs be persisted?
-
----
-
-# 22. Success Criteria
-
-The project is considered successful if:
-
-* It follows clean architecture.
-* It is fully documented.
-* Every feature is tested.
-* Every architectural decision can be explained.
-* The system is modular and extensible.
-* Another developer can understand the project from the documentation alone.
-* The project demonstrates strong software engineering skills rather than simply showcasing technologies.
+* Deployed and reachable by URL within 10 days
+* Every simulated subsystem is clearly labeled as such in the README
+* Every scope cut is documented in `ADR.md`
+* The full user journey (section 5) works end to end without manual DB intervention
 
 ---
 
 # Next Document
 
-DATABASE_DESIGN.md
-
-The next step is to identify every entity in the system and design a normalized relational database before writing any backend code.
+`DATABASE_DESIGN.md` — schema is frozen as-is (already built); see that document for what's kept
+vs. unused in V1.

@@ -1,12 +1,33 @@
 # 📖 BuildMonitor — Project Bible
 
-> **Version:** 1.0
+> **Version:** 2.0 (V1 MVP — 10 Day Build Plan)
 >
-> **Status:** Planning Phase
+> **Status:** Building
 >
 > **Author:** Swastik Goswami
 >
-> **Project Type:** Full Stack Software Engineering Platform
+> **Project Type:** Full Stack Developer Platform
+
+---
+
+# ⚠️ V1 Scope Notice
+
+The original plan (v1.0 of this document) was written as a long-term, resume-flagship system
+(Celery, Redis, Prometheus, Grafana, real GitHub OAuth + webhooks, RBAC, audit logs, WebSockets).
+That version is preserved conceptually in `Future Scope` below — it is **not** what gets built in
+the next 10 days.
+
+This revision defines a **shippable MVP** that:
+* Reuses the existing Prisma schema as-is (it already models the full domain correctly).
+* Rebuilds the service layer from scratch on **NestJS + Prisma + PostgreSQL** (matches what's
+  actually already scaffolded in the backend repo — not FastAPI/SQLAlchemy as originally written).
+* Replaces every heavy infra piece (Redis, Celery, Prometheus, Grafana, Nginx, WebSockets, real
+  webhooks) with a simple, working substitute that demonstrates the same engineering concept
+  without the setup cost.
+* Simulates the parts a solo dev can't realistically build in 10 days (actual CI/CD deploy
+  pipelines, real server metrics) with a deterministic, clearly-labeled simulator. This is a
+  legitimate and common pattern for internal tools/demos — call it out plainly in the README so
+  it reads as an intentional design choice, not a shortcut you're hiding.
 
 ---
 
@@ -14,564 +35,225 @@
 
 * Vision
 * Objectives
-* Project Philosophy
-* Project Rules
 * Target Audience
 * Problem Statement
 * Solution
-* Core Features
-* Stretch Features
-* Tech Stack
-* High-Level Architecture
-* Development Roadmap
-* Progress Tracker
+* Core Features (V1 MVP)
+* Explicitly Out of Scope for V1
+* Tech Stack (V1)
+* High-Level Architecture (V1)
+* 10-Day Roadmap
 * Engineering Goals
-* Learning Goals
-* Future Scope
+* Future Scope (Post-V1)
 * Decisions Log
-* Notes
+* Final Goal
 
 ---
 
 # Vision
 
-BuildMonitor is a production-inspired developer platform that helps developers manage repositories, deployments, application health, logs, metrics, and alerts from a single dashboard.
+BuildMonitor is a developer platform that helps developers manage projects, track deployments,
+monitor application health, and get alerted when something breaks — from one dashboard.
 
-The goal is **not** to clone an existing product like Vercel or Datadog, but to understand the engineering principles behind modern developer infrastructure and implement them in a scalable, maintainable way.
-
-This project serves as a flagship portfolio project demonstrating backend engineering, full-stack development, system design, distributed systems fundamentals, DevOps practices, and software architecture.
+Not a clone of Vercel/Datadog. A demonstration, at MVP scale, of the engineering principles
+behind them: layered backend architecture, auth, background processing, monitoring, and clean
+API design.
 
 ---
 
 # Objectives
 
-## Primary Goal
+## Primary Goal (10 Days)
 
-Build a production-quality full stack application that showcases strong software engineering skills.
+Ship a working, deployed, demoable full-stack product.
 
 ## Secondary Goals
 
-* Learn modern backend architecture
-* Learn scalable system design
-* Learn production deployment
-* Learn DevOps fundamentals
-* Learn observability
-* Learn authentication systems
-* Learn background processing
-* Learn caching
-* Learn clean architecture
-* Learn API design
-
----
-
-# Project Philosophy
-
-This project is **not** about finishing quickly.
-
-This project is about becoming a better engineer.
-
-Every major design decision should answer:
-
-* Why are we doing this?
-* What alternatives exist?
-* Why is this approach better?
-* What tradeoffs does it introduce?
-
-If a feature is added, it should teach an engineering concept.
-
-If it doesn't, reconsider whether it belongs.
-
----
-
-# Project Rules
-
-## Engineering Rules
-
-* Never blindly copy code.
-* Understand every line before committing.
-* Prefer clean architecture over shortcuts.
-* Build production-style APIs.
-* Write meaningful commits.
-* Keep documentation updated.
-* Follow REST conventions.
-* Keep modules loosely coupled.
-* Design before implementation.
-* Test before calling a feature complete.
-
-## Development Rules
-
-* No vibe coding.
-* Learn first.
-* Build second.
-* Optimize later.
-* Refactor when necessary.
-* Document every important decision.
+* Learn clean layered backend architecture (NestJS modules/services/repos via Prisma)
+* Learn JWT auth done properly
+* Learn how to design and simulate a monitoring/alerting pipeline
+* Learn to scope ruthlessly under a deadline — this is itself an engineering skill
 
 ---
 
 # Target Audience
 
-Primary Users
-
-* Developers
-* Students
-* Software Engineers
-
-Potential Future Users
-
-* Small Teams
-* Startups
-* Internal Engineering Teams
+Primary: developers, students, engineers building a portfolio piece.
+Future: small teams (post-V1, once org/RBAC is fleshed out).
 
 ---
 
 # Problem Statement
 
-Modern developers often use multiple tools for:
-
-* Deployments
-* Monitoring
-* Logs
-* Metrics
-* GitHub Integration
-* Notifications
-* Health Checks
-
-Managing all these tools separately becomes inefficient.
+Developers juggle separate tools for deployments, monitoring, logs, and alerts. BuildMonitor
+centralizes the essentials into one dashboard.
 
 ---
 
 # Solution
 
-BuildMonitor provides a centralized platform where users can:
-
-* Connect GitHub
-* Manage projects
-* Track deployments
-* Monitor application health
-* View logs
-* Analyze metrics
-* Receive alerts
-* Manage environments
+A single platform where a user can register, create a project, connect a repo, trigger/track
+deployments, watch simulated live metrics and health, and get alerted when things fail.
 
 ---
 
-# Core Features (MVP)
+# Core Features (V1 MVP)
 
 ## Authentication
+* Register (email + password)
+* Login / Logout
+* JWT access token + refresh token
+* `GET /auth/me`
 
-* User Registration
-* Login
-* Logout
-* JWT Authentication
-* Refresh Tokens
-* Password Hashing
-* Forgot Password
-* Email Verification
-* OAuth (GitHub)
+_Cut for V1: GitHub OAuth login, email verification, forgot-password flow. See Future Scope._
 
----
+## Organizations
+* A "Personal" organization is auto-created on registration
+* Rename organization
+* (No invites / multi-member workflow in V1 — schema supports it, UI doesn't expose it yet)
 
-## Dashboard
+## Projects
+* Create / Read / Update / Delete (soft delete)
 
-* Overview Cards
-* Deployment Summary
-* Health Status
-* Recent Logs
-* Recent Alerts
+## Repository Connection
+* Connect a GitHub repo by owner/name (public repos, read-only via GitHub REST API)
+* Manual "Sync" button pulls latest commit/branch info on demand
 
----
+_Cut for V1: GitHub OAuth app, webhooks, auto-sync. See Future Scope._
 
-## Project Management
-
-* Create Project
-* Delete Project
-* Update Project
-* Archive Project
-
----
-
-## GitHub Integration
-
-* OAuth
-* Connect Repository
-* Repository Sync
-* Webhooks
-* Commit History
-
----
+## Environments
+* Create environments per project (development / staging / production)
 
 ## Deployments
-
-* Deployment History
-* Build Status
-* Deployment Timeline
-* Deployment Logs
-
----
+* Trigger a deployment for an environment
+* Simulated pipeline: QUEUED → RUNNING → SUCCESS/FAILED, with realistic timed progress and
+  generated log lines (no real build/deploy happens — this is a monitoring platform, not a CI
+  system)
+* Deployment history + log viewer (polling, not WebSockets)
 
 ## Monitoring
+* Simulated CPU / Memory / Latency / Error Rate metrics generated on an interval per environment
+* Simulated health checks (or real HTTP ping if the environment has a domain set)
+* Dashboard charts (recharts)
 
-* CPU Usage
-* RAM Usage
-* Disk Usage
-* Response Time
-* Error Rate
-* Uptime
-
----
-
-## Logs
-
-* Search
-* Pagination
-* Filtering
-* Download
-
----
+## Alerts
+* Auto-created when a deployment fails, a metric crosses a threshold, or a health check fails
+* Mark alert as resolved
 
 ## Notifications
+* In-app only (bell icon), generated alongside alerts and deployment completions
 
-* In-App Notifications
-* Email Notifications
-
----
-
-# Stretch Features
-
-* Team Management
-* RBAC
-* Slack Integration
-* Discord Integration
-* API Keys
-* Audit Logs
-* Real-Time Updates
-* Live Deployment Logs
-* Dark Mode
-* Multi Organization Support
+_Cut for V1: Email notifications. See Future Scope._
 
 ---
 
-# Tech Stack
+# Explicitly Out of Scope for V1
+
+* GitHub OAuth + real webhooks
+* Redis, Celery/BullMQ, Prometheus, Grafana, Nginx
+* WebSockets / real-time push (polling instead)
+* RBAC beyond "owner of your own org" (Admin/Developer/Viewer roles stay in the schema, unused)
+* Team invites, multi-member orgs
+* Audit logs (table exists, not written to in V1)
+* API keys, Slack/Discord integrations, 2FA, dark mode
+* Kubernetes, Terraform, multi-region, microservices
+
+All of the above remain valid **future** work — they are not being deleted from the vision, just
+sequenced after a working V1 ships.
+
+---
+
+# Tech Stack (V1)
 
 ## Frontend
-
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-* TanStack Query
-* React Hook Form
-* Zod
-* shadcn/ui
-
----
+Next.js, React, TypeScript, Tailwind CSS, TanStack Query (polling), React Hook Form, Zod,
+shadcn/ui, recharts
 
 ## Backend
-
-* FastAPI
-* SQLAlchemy
-* Alembic
-* Pydantic
-
----
+NestJS, TypeScript, Prisma, class-validator, Passport (JWT strategy), `@nestjs/schedule`
+(replaces Celery/Redis for the simulator jobs)
 
 ## Database
+PostgreSQL (schema unchanged — see DATABASE_DESIGN.md)
 
-* PostgreSQL
-
----
-
-## Cache
-
-* Redis
+## Deployment
+Backend → Railway/Render (free tier). Frontend → Vercel. No Docker Compose stack required for
+V1 (a single Dockerfile for the backend is a nice-to-have on Day 10 if time remains).
 
 ---
 
-## Background Jobs
+# High-Level Architecture (V1)
 
-* Celery
-
----
-
-## Monitoring
-
-* Prometheus
-* Grafana
-
----
-
-## Containerization
-
-* Docker
-* Docker Compose
+```
+Browser
+   │
+Next.js Frontend (polling via TanStack Query)
+   │
+HTTPS REST API (/api/v1)
+   │
+NestJS Backend
+   │
+PostgreSQL  ←── @nestjs/schedule cron jobs (deployment simulator, metrics simulator, health checks, alert evaluation)
+```
 
 ---
 
-## CI/CD
-
-* GitHub Actions
-
----
-
-## Reverse Proxy
-
-* Nginx
-
----
-
-# High-Level Architecture
-
-Frontend
-
-↓
-
-API Layer
-
-↓
-
-Business Logic
-
-↓
-
-Database / Cache / Workers
-
-↓
-
-Monitoring Stack
-
-Detailed architecture will be added later.
-
----
-
-# Development Roadmap
-
-## Phase 0 — Planning
-
-* [ ] Vision
-* [ ] Project Scope
-* [ ] Features
-* [ ] Tech Stack
-* [ ] Roadmap
-
----
-
-## Phase 1 — System Design
-
-* [ ] Requirements
-* [ ] User Stories
-* [ ] Domain Model
-* [ ] Architecture Diagram
-* [ ] Sequence Diagrams
-* [ ] Database Design
-
----
-
-## Phase 2 — Backend Foundation
-
-* [ ] FastAPI Setup
-* [ ] Folder Structure
-* [ ] Configuration
-* [ ] Logging
-* [ ] Error Handling
-* [ ] Docker
-
----
-
-## Phase 3 — Authentication
-
-### Learn
-
-* [ ] JWT
-* [ ] OAuth
-* [ ] Password Hashing
-* [ ] RBAC
-
-### Backend
-
-* [ ] Register
-* [ ] Login
-* [ ] Logout
-* [ ] Refresh Token
-* [ ] Forgot Password
-
-### Frontend
-
-* [ ] Login Page
-* [ ] Register Page
-* [ ] Auth Context
-* [ ] Protected Routes
-
-### Testing
-
-* [ ] Unit Tests
-* [ ] Integration Tests
-
----
-
-## Phase 4 — Project Management
-
-* [ ] Projects
-* [ ] Repositories
-* [ ] Environments
-
----
-
-## Phase 5 — GitHub Integration
-
-* [ ] OAuth
-* [ ] Repository Import
-* [ ] Webhooks
-* [ ] Commit Sync
-
----
-
-## Phase 6 — Deployments
-
-* [ ] Deployment API
-* [ ] Deployment History
-* [ ] Build Status
-* [ ] Deployment Logs
-
----
-
-## Phase 7 — Monitoring
-
-* [ ] Metrics
-* [ ] Health Checks
-* [ ] Uptime
-* [ ] Dashboards
-
----
-
-## Phase 8 — Notifications
-
-* [ ] Email
-* [ ] In-App
-* [ ] Alerts
-
----
-
-## Phase 9 — Production Ready
-
-* [ ] Docker
-* [ ] CI/CD
-* [ ] Testing
-* [ ] Documentation
-* [ ] Performance
-* [ ] Security
-
----
-
-# Progress Tracker
-
-## Planning
-
-* [x] Project Idea
-* [x] Initial Tech Stack
-* [ ] Complete System Design
-
-Backend Progress
-
-0%
-
-Frontend Progress
-
-0%
-
-Testing
-
-0%
-
-Deployment
-
-0%
-
-Documentation
-
-10%
+# 10-Day Roadmap
+
+See ROADMAP.md for the day-by-day breakdown. Summary:
+
+| Days | Focus |
+|---|---|
+| 1–2 | Backend: auth, orgs (auto-personal), projects, repository connect |
+| 3–4 | Backend: environments, deployment simulator, metrics + health simulators |
+| 5 | Backend: alerts engine, notifications, dashboard aggregation endpoint |
+| 6 | Backend polish: validation, error handling, seed script, critical-path tests |
+| 7 | Frontend: auth pages, layout, protected routes, API client |
+| 8 | Frontend: projects/environments/repo pages, deploy trigger + log viewer |
+| 9 | Frontend: monitoring dashboard, alerts, notifications, UI polish |
+| 10 | Deploy, README, demo script/video, final bug bash, buffer |
 
 ---
 
 # Engineering Goals
 
-By the end of this project I should understand:
-
-* Authentication
-* Authorization
-* REST APIs
-* WebSockets
-* Background Workers
-* Docker
-* CI/CD
-* Redis
-* PostgreSQL
-* Monitoring
-* Logging
-* Caching
-* Security
-* Clean Architecture
-* Scalable Backend Design
+By the end of V1 you should be able to explain, in an interview:
+* Why the domain is modeled Org → Project → Environment → Deployment
+* How JWT auth + refresh works end to end
+* How the deployment/metrics simulator is structured and why it's a legitimate stand-in for real
+  infra given the timeline
+* What you would build next (the Future Scope section) and why, in priority order
 
 ---
 
-# Learning Goals
+# Future Scope (Post-V1)
 
-This project should prepare me for interviews covering:
-
-* Backend Development
-* Full Stack Development
-* Software Engineering
-* System Design
-* Database Design
-* API Design
-* DevOps Fundamentals
-
----
-
-# Future Scope
-
-Possible future improvements:
-
-* Kubernetes
-* Multi-region deployment
-* Distributed workers
-* Horizontal scaling
-* Event-driven architecture
-* Microservices
-* Terraform
-* AWS deployment
+In priority order for a "V2":
+1. GitHub OAuth (login + repo import) + real webhooks
+2. Real background job queue (BullMQ + Redis) once there's an actual async workload
+3. Org invites + full RBAC enforcement
+4. WebSockets for live deployment logs and metric updates
+5. Email notifications (forgot password, deployment alerts)
+6. Prometheus/Grafana if/when real infrastructure exists to monitor
+7. Audit logs, API keys, Slack/Discord integrations
+8. Docker Compose full stack, then Kubernetes if it's ever justified
 
 ---
 
 # Decisions Log
 
-This section records every major architectural decision and why it was made.
-
-Example:
-
-Decision:
-Use PostgreSQL instead of MongoDB.
-
-Reason:
-Strong relational modeling and ACID guarantees.
-
-Tradeoffs:
-More rigid schema, but better consistency.
-
-Status:
-Accepted
+See ADR.md — new entries ADR-011 through ADR-015 document every scope cut made for V1 and why.
 
 ---
 
 # Notes
 
-Use this section for quick notes during development.
+Use this section for quick notes during the 10-day build.
 
 ---
 
 # Final Goal
 
-Build a project that demonstrates software engineering principles rather than simply showcasing a collection of technologies.
-
-If I can confidently explain every architectural decision, tradeoff, and implementation detail during an interview, then this project has achieved its purpose.
+Ship a working, deployed, demoable product in 10 days that honestly represents what it is: a
+well-architected MVP with clearly labeled simulated subsystems, and a clear, credible roadmap for
+what a "real" version would add next.

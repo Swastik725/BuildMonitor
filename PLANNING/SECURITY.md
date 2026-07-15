@@ -1,133 +1,72 @@
 # 🔒 SECURITY.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Authentication
+# ⚠️ V1 Scope Notice
 
-JWT
-
-Refresh Tokens
-
-OAuth
-
-Argon2 Password Hashing
+Webhook signature verification and audit logging are post-V1 (no webhooks, no audit writes in
+V1). Everything else below is real V1 scope — auth security doesn't get a pass just because the
+timeline is short.
 
 ---
 
-# Authorization
+# Authentication (V1)
 
-RBAC
-
-Organization Isolation
-
-Permission Checks
+- JWT (access + refresh)
+- Password hashing (bcrypt/argon2)
 
 ---
 
-# API Security
+# Authorization (V1)
 
-HTTPS
-
-Rate Limiting
-
-Request Validation
-
-Response Validation
-
-CORS
+- Organization-ownership checks on every resource (see `AUTHORIZATION.md`)
 
 ---
 
-# Secrets
+# API Security (V1)
 
-Environment Variables
-
-Encrypted GitHub Tokens
-
-No Hardcoded Secrets
-
----
-
-# Database
-
-Parameterized Queries
-
-ORM
-
-Foreign Keys
-
-Constraints
+- HTTPS (via hosting provider)
+- Rate limiting on auth endpoints
+- Request validation (class-validator DTOs) on every endpoint
+- CORS configured for the deployed frontend origin only
 
 ---
 
-# Logging
+# Secrets (V1)
 
-No Password Logging
-
-No Token Logging
-
-Audit Logs
+- Environment variables only, never committed
+- `.env.example` checked in, `.env` gitignored
 
 ---
 
-# Security Headers
+# Database (V1)
 
-Future
-
-CSP
-
-HSTS
-
-X-Frame-Options
+- Parameterized queries via Prisma (no raw SQL string concatenation)
+- Foreign keys + constraints as already defined in the schema
 
 ---
 
-# Threats
+# Logging (V1)
 
-SQL Injection
-
-XSS
-
-CSRF
-
-Brute Force
-
-Replay Attacks
-
-Token Theft
-
-Webhook Spoofing
+- Never log passwords or tokens
 
 ---
 
-# Mitigations
+# Threats Considered in V1
 
-Input Validation
-
-Argon2
-
-JWT Expiry
-
-Refresh Rotation
-
-Webhook Signature Verification
-
-Rate Limiting
+SQL injection (mitigated by Prisma), XSS (React escaping + input validation), brute force on
+login (rate limiting), token theft (short-lived access tokens, revocable refresh tokens).
 
 ---
 
-# Future
+# Post-V1
 
-2FA
-
-Secret Manager
-
-Key Rotation
+Webhook signature verification, audit logs, 2FA, secret manager, key rotation, CSP/HSTS headers.
 
 ---
 
 # Status
 
-Planning
+Building (V1)

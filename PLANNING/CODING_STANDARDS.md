@@ -1,79 +1,54 @@
 # 📐 CODING_STANDARDS.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
+
+---
+
+# ⚠️ V1 Scope Notice
+
+Corrected to match the actual stack (NestJS/TypeScript, not Python/FastAPI as the original draft
+assumed).
 
 ---
 
 # General
 
-Readable Code
-
-Small Functions
-
-Meaningful Names
-
-No Magic Numbers
+Readable code, small functions, meaningful names, no magic numbers.
 
 ---
 
-# Backend
+# Backend (NestJS/TypeScript)
 
-PEP8
-
-Type Hints
-
-Docstrings
-
-Dependency Injection
-
-Service Layer
-
-Repository Pattern
+- ESLint + Prettier
+- Strict TypeScript
+- DTOs with `class-validator` for every input
+- Constructor-based dependency injection (NestJS default)
+- Controller → Service → Prisma layering — no Prisma calls inside controllers
 
 ---
 
 # Frontend
 
-Functional Components
-
-Custom Hooks
-
-Reusable Components
-
-Strict TypeScript
+- Functional components
+- Custom hooks for data fetching (TanStack Query)
+- Strict TypeScript
+- Reusable components (shadcn/ui as the base)
 
 ---
 
 # Git
 
-Conventional Commits
-
-Small Commits
-
-Feature Branches
+Conventional commits, small commits, feature branches off `main`.
 
 ---
 
-# Documentation
+# Reviews (solo-dev adaptation)
 
-Every Module Documented
-
-Public APIs Documented
-
-Architecture Updated
-
----
-
-# Reviews
-
-No Dead Code
-
-No TODO Left Behind
-
-Tests Required
+No dead code, no TODOs left in for more than a day, at least a smoke test for anything on the
+critical path (auth, deployment trigger).
 
 ---
 
 # Status
 
-Planning
+Building (V1)

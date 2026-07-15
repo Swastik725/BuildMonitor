@@ -1,137 +1,45 @@
 # 📝 LOGGING.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Goal
+# ⚠️ V1 Scope Notice
 
-Provide structured, searchable, centralized application logs.
+This document covers two different things that were conflated in v1.0 — keep them separate:
 
----
-
-# Log Levels
-
-DEBUG
-
-INFO
-
-WARNING
-
-ERROR
-
-CRITICAL
+1. **Application logs** (backend's own operational logs) — V1 uses NestJS's built-in `Logger` to
+   console output. No file/DB pipeline, no ELK/Loki.
+2. **Deployment logs** (the product feature — logs shown to the user for a simulated deployment)
+   — these ARE stored in Postgres (`deployment_logs` table) and are core V1 functionality. See
+   `DEPLOYMENT_ENGINE.md`.
 
 ---
 
-# Log Sources
+# Application Logs (V1)
 
-Backend
-
-Frontend (Future)
-
-Workers
-
-GitHub Webhooks
-
-Authentication
-
-Deployments
-
-Monitoring
+- NestJS `Logger`, console output only
+- Log levels: `log` / `warn` / `error` / `debug`
+- No request-ID/correlation-ID tracing in V1 (post-V1 with real observability tooling)
 
 ---
 
-# Log Format
+# Deployment Logs (V1 — product feature)
 
-Timestamp
-
-Level
-
-Request ID
-
-User ID
-
-Organization ID
-
-Project ID
-
-Service
-
-Message
-
-Metadata
+- Stored per-deployment in `deployment_logs`
+- Fields: timestamp, log level, message
+- Paginated via `GET /deployments/{id}/logs`
+- No search/filter/download in V1 — just chronological display
 
 ---
 
-# Log Pipeline
+# Post-V1
 
-Application
-
-↓
-
-Structured Logger
-
-↓
-
-Console
-
-↓
-
-File
-
-↓
-
-Database
-
-↓
-
-Dashboard
-
----
-
-# Features
-
-Search
-
-Filtering
-
-Pagination
-
-Download
-
-Retention
-
-Real Time Streaming
-
----
-
-# Retention
-
-Development
-
-7 Days
-
-Production
-
-30 Days
-
-Future
-
-Configurable
-
----
-
-# Future
-
-ELK Stack
-
-Loki
-
-Cloud Logging
+Structured app-log pipeline (DB/file + dashboard viewer), search/filter/download for deployment
+logs, retention policy, ELK/Loki/cloud logging, real-time log streaming via WebSockets.
 
 ---
 
 # Status
 
-Planning
+Building (V1)

@@ -1,135 +1,61 @@
 # 🛡️ AUTHORIZATION.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Model
+# ⚠️ V1 Scope Notice
 
-RBAC
-
-Role Based Access Control
-
----
-
-# Roles
-
-OWNER
-
-ADMIN
-
-DEVELOPER
-
-VIEWER
+Full RBAC (Owner/Admin/Developer/Viewer with distinct permission sets) is **post-V1**. In V1
+every user has exactly one personal organization and is its only member with role `OWNER`. The
+only check that matters in V1 is: *does this resource belong to an organization/project the
+requesting user owns?*
 
 ---
 
-# Permissions
+# Model (V1)
 
-Owner
-
-- Full Access
-
-Admin
-
-- Manage Members
-- Manage Projects
-- Deploy
-- View Metrics
-
-Developer
-
-- View Projects
-- Deploy
-- Logs
-- Metrics
-
-Viewer
-
-- Read Only
+Ownership check only — not full RBAC yet. The `role` column exists on `organization_members` and
+is always `OWNER` in V1.
 
 ---
 
 # Resource Ownership
 
-User
-
-↓
-
-Organization
-
-↓
-
-Project
-
-↓
-
-Environment
-
-↓
-
-Deployment
+```
+User → Organization (1:1 in V1) → Project → Environment → Deployment
+```
 
 ---
 
-# Authorization Rules
+# Authorization Rule (V1)
 
-User must belong to Organization.
-
-Organization owns Projects.
-
-Projects own Environments.
-
-Deployments inherit Project permissions.
+A request may only read/write a resource if the requesting user's organization owns the parent
+project (directly or transitively). No other role logic runs in V1.
 
 ---
 
-# Permission Checks
+# Permission Checks (V1)
 
-Authentication
-
-↓
-
-Organization Membership
-
-↓
-
-Role Validation
-
-↓
-
-Permission Check
-
-↓
-
-Execute Request
+```
+Authentication → Organization Ownership Check → Execute Request
+```
 
 ---
 
-# APIs Protected
+# APIs Protected (V1)
 
-Everything except
-
-Login
-
-Register
-
-Forgot Password
-
-OAuth Callback
+Everything except `/auth/register`, `/auth/login`, `/auth/refresh`.
 
 ---
 
-# Future
+# Post-V1
 
-Custom Roles
-
-Permission Matrix
-
-Attribute Based Access Control
+- Full RBAC (Owner/Admin/Developer/Viewer) once org invites ship
+- Custom roles, permission matrix, attribute-based access control
 
 ---
 
 # Status
 
-Planning
+Building (V1)

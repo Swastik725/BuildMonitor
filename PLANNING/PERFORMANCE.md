@@ -1,71 +1,47 @@
 # ⚡ PERFORMANCE.md
 
-Version: 1.0
+Version: 2.0 (V1 MVP)
 
 ---
 
-# Goals
+# ⚠️ V1 Scope Notice
 
-- Fast API Responses
-- Low Database Load
-- Efficient Queries
+Redis caching and horizontal-scaling concerns are post-V1 (no real load yet). V1 focuses on the
+basics that are cheap to get right from day one.
+
+---
+
+# Goals (V1)
+
+- Reasonably fast API responses
+- Efficient queries (the schema already has the right indexes — see `DATABASE_DESIGN.md`)
 - Responsive UI
 
 ---
 
-# Strategies
+# Backend (V1)
 
-- Redis Cache
-- Pagination
-- Lazy Loading
-- Async Endpoints
-- Background Workers
+- Avoid N+1 queries (use Prisma's `include`/`select` deliberately)
+- Pagination on list endpoints (deployments, logs, metrics, notifications)
+- Connection pooling (Prisma default)
 
 ---
 
-# Database
+# Frontend (V1)
 
-- Index Frequently Queried Columns
-- Avoid N+1 Queries
-- Use JOINs Carefully
-- Optimize Query Plans
-
----
-
-# Frontend
-
-- Route Splitting
-- Code Splitting
-- Image Optimization
-- React Query Caching
+- TanStack Query caching/dedup (also serves as the "no Redis needed yet" caching layer)
+- Route-level code splitting (Next.js default)
+- Image optimization (Next.js default)
 
 ---
 
-# Backend
+# Post-V1
 
-- Async FastAPI
-- Connection Pooling
-- Response Compression
-
----
-
-# Monitoring
-
-- API Response Time
-- Query Time
-- Cache Hit Ratio
-- Worker Queue Length
-
----
-
-# Future
-
-- CDN
-- Horizontal Scaling
-- Load Balancing
+Redis cache, CDN, horizontal scaling, load balancing — once there's real multi-user load to
+justify them.
 
 ---
 
 # Status
 
-Planning
+Building (V1)

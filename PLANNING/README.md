@@ -1,48 +1,49 @@
 # 🚀 BuildMonitor
 
-A production-inspired full-stack developer platform for monitoring deployments, application health, logs, metrics, alerts, and GitHub-integrated projects.
+A developer platform for tracking projects, deployments, application health, metrics, and alerts
+from a single dashboard.
 
-## Features
+**Status:** V1 MVP — 10 day build. See `PROJECT_BIBLE.md` for full scope and `ROADMAP.md` for the
+day-by-day plan.
 
-- Authentication
-- Organizations
+## V1 Features
+
+- Authentication (email/password + JWT)
+- Organizations (auto-created personal workspace)
 - Projects
-- GitHub Integration
-- Deployments
-- Monitoring
-- Metrics
-- Alerts
-- Notifications
-- Real-time Updates
+- Repository connection (GitHub, read-only, manual sync)
+- Environments
+- Deployments (simulated pipeline with live-ish status + logs)
+- Monitoring (simulated metrics + health checks)
+- Alerts (auto-generated from failures/thresholds)
+- In-app notifications
+
+> Note: the deployment pipeline and infrastructure metrics are **simulated** in V1 — there is no
+> real build/deploy execution or real server being monitored. This is called out on purpose: it's
+> the right tradeoff for a 10-day solo build, and the roadmap in `PROJECT_BIBLE.md` explains what
+> "real" would look like next.
 
 ## Tech Stack
 
 ### Frontend
-
-- Next.js
-- React
-- TypeScript
-- TailwindCSS
+- Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
+- TanStack Query (polling for live-ish updates)
+- React Hook Form + Zod
 
 ### Backend
-
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-- Redis
-- Celery
+- NestJS, TypeScript
+- Prisma + PostgreSQL
+- `@nestjs/schedule` for the deployment/metrics/health simulators
 
 ### DevOps
-
-- Docker
-- GitHub Actions
-- Prometheus
-- Grafana
+- GitHub Actions (lint + test + build)
+- Backend on Railway/Render, frontend on Vercel
 
 ## Documentation
 
-See `/docs`
+See `/PLANNING` — start with `PROJECT_BIBLE.md`, then `ROADMAP.md`, `SYSTEM_DESIGN.md`,
+`DOMAIN_MODEL.md`, and `DATABASE_DESIGN.md`.
 
 ## Status
 
-🚧 Under Active Development
+🚧 In active development — 10 day MVP sprint

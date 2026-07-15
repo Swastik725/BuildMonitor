@@ -1,8 +1,25 @@
 # 🗄️ DATABASE_DESIGN.md
 
-> Version: 1.0
+> Version: 2.0 (V1 MVP)
 >
-> Status: Draft
+> Status: Frozen — matches the existing `schema.prisma` as-is, no changes for V1
+
+---
+
+# ⚠️ V1 Scope Notice
+
+This schema is being kept exactly as already built. The tables below all exist in the current
+Prisma schema. For V1, two tables are present but effectively **unused by the API**:
+
+* `audit_logs` — no service writes to this in V1 (post-V1 feature)
+* `organization_members.role` — always `OWNER` in V1 (every org has exactly one auto-created
+  member); `ADMIN`/`DEVELOPER`/`VIEWER` are schema-ready, not enforced until org invites ship
+  post-V1
+
+Everything else below is fully active in V1, including `deployments`, `deployment_logs`,
+`metrics`, and `health_checks` — those are populated by the simulator jobs described in
+`BACKGROUND_WORKERS.md` and `MONITORING.md` rather than by real infrastructure, but the tables
+and their meaning are unchanged.
 
 ---
 
