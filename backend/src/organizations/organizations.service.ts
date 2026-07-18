@@ -18,5 +18,12 @@ export class OrganizationsService {
   findOne(id: string) {
     return this.prisma.organization.findUnique({ where: { id } });
   }
+
+  findMembers(organizationId: string) {
+  return this.prisma.organizationMember.findMany({
+    where: { organizationId },
+    include: { user: { select: { id: true, fullName: true, username: true, email: true, avatarUrl: true } } },
+  });
+}
 }
 

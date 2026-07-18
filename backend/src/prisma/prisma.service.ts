@@ -9,6 +9,7 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  incident: any;
   constructor(config: ConfigService) {
     // Prisma 7 driver-adapter pattern: instead of Prisma managing its own
     // connection internally, we hand it a `pg` Pool wrapped in PrismaPg.

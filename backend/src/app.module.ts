@@ -4,11 +4,13 @@ import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { OrganizationsModule } from './organizations/organizations.module';
-import { AuthModule } from './auth/auth.module';
+import { AuthModule } from './auth/auth.module';import { ScheduleModule } from '@nestjs/schedule';
+import { DeploymentsModule } from './deployments/deployments.module';
+import { IncidentsModule } from './incidents/incidents.module';
 
 
 @Module({
-  imports: [ProjectsModule, OrganizationsModule, AuthModule,
+  imports: [ProjectsModule, OrganizationsModule, AuthModule, DeploymentsModule, ScheduleModule.forRoot(),  IncidentsModule,
      ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

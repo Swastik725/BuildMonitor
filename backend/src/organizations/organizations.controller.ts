@@ -22,4 +22,9 @@ export class OrganizationsController {
   findOne(@Param('id') id: string) {
     return this.organizationsService.findOne(id);
   }
+
+   @Get(':id/members')
+    findMembers(@Param('id') id: string) {
+    return this.organizationsService.findMembers(id);
+    }
 }

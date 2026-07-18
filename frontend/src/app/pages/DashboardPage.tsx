@@ -1,8 +1,11 @@
+import { useState, useEffect, useCallback } from "react";
 import { Plus, ChevronRight } from "lucide-react";
 import type { NavState } from "../lib/types";
-import { PROJECTS, INCIDENTS, ALL_RECENT } from "../lib/mockData";
+import { INCIDENTS, ALL_RECENT } from "../lib/mockData";
 import { PageFade, SectionCard, Btn, StatusBadge, Mono } from "../components/primitives";
 import { TopBar } from "../components/TopBar";
+import { NewProjectModal } from "../components/NewProjectModel";
+import { projectsApi, type Project } from "../lib/projectsApi";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -15,49 +18,86 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 }
 
 export function DashboardPage({ onNav }: { onNav: (s: NavState) => void }) {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showNewProject, setShowNewProject] = useState(false);
+
+  const loadProjects = useCallback(() => {
+    setLoading(true);
+    projectsApi
+      .list()
+      .then(setProjects)
+      .catch(err => setError(err instanceof Error ? err.message : "Failed to load projects"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
   return (
     <PageFade>
       <TopBar title="Dashboard" />
       <div className="p-5 max-w-6xl space-y-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Active projects"    value="4"      sub="4 repos monitored" />
-          <StatCard label="Deployments (7d)"   value="23"     sub="↑ 4 from last week" />
-          <StatCard label="Mean uptime"         value="99.7%"  sub="across all services" />
-          <StatCard label="Open incidents"      value="2"      sub="1 critical, 1 high" />
+          <StatCard label="Active projects" value={String(projects.length)} sub={`${projects.length} repos monitored`} />
+          {/* These three are still placeholder — they depend on the Deployments/Incidents
+              modules, which don't have backend endpoints yet. */}
+          <StatCard label="Deployments (7d)" value="—" sub="Coming with Deployments module" />
+          <StatCard label="Mean uptime" value="—" sub="Coming with monitoring module" />
+          <StatCard label="Open incidents" value="—" sub="Coming with monitoring module" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2">
             <SectionCard
               title="Projects"
-              action={<Btn variant="ghost" size="sm"><Plus className="w-3.5 h-3.5" />New project</Btn>}
+              action={
+                <Btn variant="ghost" size="sm" onClick={() => setShowNewProject(true)}>
+                  <Plus className="w-3.5 h-3.5" />New project
+                </Btn>
+              }
             >
-              <div className="divide-y divide-border">
-                {PROJECTS.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => onNav({ page: "project", projectId: p.id })}
-                    className="w-full px-5 py-3.5 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-medium text-foreground">{p.name}</span>
-                        <StatusBadge status={p.status} pulse={p.status === "in-progress"} />
+              {loading ? (
+                <p className="px-5 py-4 text-sm text-muted-foreground">Loading projects…</p>
+              ) : error ? (
+                <p className="px-5 py-4 text-sm text-destructive">{error}</p>
+              ) : projects.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-muted-foreground">
+                  No projects yet — create your first one.
+                </p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {projects.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => onNav({ page: "project", projectId: p.id })}
+                      className="w-full px-5 py-3.5 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-sm font-medium text-foreground">{p.name}</span>
+                          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                            {p.visibility}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Mono className="text-muted-foreground">{p.slug}</Mono>
+                          <span>·</span>
+                          <span>{p.defaultBranch}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Mono className="text-muted-foreground">{p.repo}</Mono>
-                        <span>·</span>
-                        <span>{p.framework}</span>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(p.createdAt).toLocaleDateString()}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs text-muted-foreground">{p.lastDeploy}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{p.uptime} uptime</div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  </button>
-                ))}
-              </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </SectionCard>
           </div>
 
@@ -107,6 +147,13 @@ export function DashboardPage({ onNav }: { onNav: (s: NavState) => void }) {
           </div>
         </SectionCard>
       </div>
+
+      {showNewProject && (
+        <NewProjectModal
+          onClose={() => setShowNewProject(false)}
+          onCreated={loadProjects}
+        />
+      )}
     </PageFade>
   );
 }
