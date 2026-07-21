@@ -10,6 +10,9 @@ import { DeploymentPage } from "./pages/DeploymentPage";
 import { OrgPage } from "./pages/OrgPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
+// Google/GitHub callbacks redirect the browser back here with
+// ?accessToken=...&refreshToken=... in the URL. Catch it once on load,
+// store the tokens, then strip them from the address bar.
 function useOAuthCallback() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -18,6 +21,7 @@ function useOAuthCallback() {
     if (accessToken && refreshToken) {
       setTokens(accessToken, refreshToken);
       window.history.replaceState({}, "", window.location.pathname);
+      // Force a reload so AuthContext picks up the now-present token on init.
       window.location.reload();
     }
   }, []);
@@ -44,7 +48,7 @@ function AppShell() {
         {nav.page === "project"   && <ProjectPage    projectId={nav.projectId ?? "web-frontend"} onNav={setNav} />}
         {nav.page === "deployment"&& <DeploymentPage  projectId={nav.projectId ?? "web-frontend"} deploymentId={nav.deploymentId ?? "dep-e4f5g6"} onNav={setNav} />}
         {nav.page === "org"       && <OrgPage         onNav={setNav} />}
-        {nav.page === "settings"  && <SettingsPage />}
+        {nav.page === "settings"  && <SettingsPage onNav={setNav} />}
       </main>
     </div>
   );

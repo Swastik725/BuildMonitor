@@ -1,52 +1,72 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, ChevronRight } from "lucide-react";
+import { ArrowUpRight, CircleAlert, Plus, Radio, Rocket, ChevronRight } from "lucide-react";
 import type { NavState } from "../lib/types";
-import { INCIDENTS, ALL_RECENT } from "../lib/mockData";
 import { PageFade, SectionCard, Btn, StatusBadge, Mono } from "../components/primitives";
 import { TopBar } from "../components/TopBar";
-import { NewProjectModal } from "../components/NewProjectModel";
+import { NewProjectModal } from "../components/NewProjectModal";
+import { Gauge } from "../components/Gauge";
 import { projectsApi, type Project } from "../lib/projectsApi";
+import { deploymentsApi, type Deployment } from "../lib/deploymentsApi";
+import { incidentsApi, type Incident } from "../lib/incidentsApi";
+import { healthChecksApi, type HealthSummary } from "../lib/healthChecksApi";
+import { deploymentStatusToUi, incidentStatusToUi, formatRelativeTime, formatDuration } from "../lib/statusMap";
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string; sub?: string; icon?: typeof Rocket }) {
   return (
-    <div className="bg-card border border-border rounded-lg p-5 hover:border-border/80 transition-colors">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold text-foreground mt-1 tabular-nums tracking-tight">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    <div className="bg-card/90 border border-border rounded-2xl p-5 hover-lift surface-glow relative overflow-hidden">
+      {Icon && <div className="absolute right-4 top-4 w-8 h-8 rounded-xl bg-accent text-accent-foreground grid place-items-center"><Icon className="w-4 h-4" /></div>}
+      <p className="text-xs text-muted-foreground font-medium">{label}</p>
+      <p className="text-3xl font-bold text-foreground mt-2 tabular-nums tracking-tight font-display">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-2">{sub}</p>}
     </div>
   );
 }
 
 export function DashboardPage({ onNav }: { onNav: (s: NavState) => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [recentDeployments, setRecentDeployments] = useState<Deployment[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [health, setHealth] = useState<HealthSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNewProject, setShowNewProject] = useState(false);
 
-  const loadProjects = useCallback(() => {
+  const loadAll = useCallback(() => {
     setLoading(true);
-    projectsApi
-      .list()
-      .then(setProjects)
-      .catch(err => setError(err instanceof Error ? err.message : "Failed to load projects"))
+    Promise.all([projectsApi.list(), deploymentsApi.listRecent(), incidentsApi.listOpen(), healthChecksApi.getSummary()])
+      .then(([p, deps, incs, h]) => {
+        setProjects(p);
+        setRecentDeployments(deps);
+        setIncidents(incs);
+        setHealth(h);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : "Failed to load dashboard"))
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const deploysLast7d = recentDeployments.filter(d => new Date(d.createdAt).getTime() >= sevenDaysAgo).length;
 
   return (
     <PageFade>
-      <TopBar title="Dashboard" />
-      <div className="p-5 max-w-6xl space-y-5">
+      <TopBar title="Dashboard" onNav={onNav} />
+      <div className="p-6 max-w-6xl space-y-6">
+        <section className="rounded-3xl overflow-hidden border border-primary/20 p-6 sm:p-8 relative bg-[linear-gradient(115deg,#151d45,#182f5f_52%,#14425b)] surface-glow">
+          <div className="absolute -right-12 -top-20 w-72 h-72 rounded-full bg-[#6d7bff]/30 blur-3xl" /><div className="absolute right-16 bottom-0 w-48 h-32 rounded-full bg-[#39d2ff]/20 blur-3xl" />
+          <div className="relative flex items-end justify-between gap-6 flex-wrap"><div><div className="flex items-center gap-2 text-[#a9dfff] text-xs font-semibold uppercase tracking-[.16em]"><Radio className="w-3.5 h-3.5 animate-pulse" /> Operations overview</div><h1 className="text-3xl sm:text-4xl text-white font-bold font-display mt-3">Everything is in view.</h1><p className="text-sm text-[#bed0ed] mt-2 max-w-lg">Track releases, project health, and the signals that need your attention.</p></div><Btn variant="secondary" onClick={() => setShowNewProject(true)} className="bg-white text-[#17224a] border-0 hover:bg-[#e7f3ff]"><Plus className="w-4 h-4" />New project</Btn></div>
+        </section>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Active projects" value={String(projects.length)} sub={`${projects.length} repos monitored`} />
-          {/* These three are still placeholder — they depend on the Deployments/Incidents
-              modules, which don't have backend endpoints yet. */}
-          <StatCard label="Deployments (7d)" value="—" sub="Coming with Deployments module" />
-          <StatCard label="Mean uptime" value="—" sub="Coming with monitoring module" />
-          <StatCard label="Open incidents" value="—" sub="Coming with monitoring module" />
+          <StatCard label="Active projects" value={String(projects.length)} sub={`${projects.length} repos monitored`} icon={Rocket} />
+          <StatCard label="Deployments (7d)" value={String(deploysLast7d)} sub="Release velocity" icon={ArrowUpRight} />
+          {/* Uptime monitoring is now real — backed by the simulated HealthCheck scheduler */}
+          <Gauge
+            percentage={health?.uptimePercentage ?? null}
+            label="Mean uptime"
+            sub={health?.avgResponseTime != null ? `${health.avgResponseTime}ms avg response` : undefined}
+          />
+          <StatCard label="Open incidents" value={String(incidents.length)} sub={incidents.length ? "Needs attention" : "All clear"} icon={CircleAlert} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -103,55 +123,67 @@ export function DashboardPage({ onNav }: { onNav: (s: NavState) => void }) {
 
           <div>
             <SectionCard title="Incidents">
-              <div className="divide-y divide-border">
-                {INCIDENTS.map(inc => (
-                  <div key={inc.id} className="px-5 py-3.5 space-y-2">
-                    <p className="text-xs text-foreground leading-snug">{inc.title}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <StatusBadge status={inc.status} />
-                      <Mono className="text-muted-foreground">{inc.project}</Mono>
+              {incidents.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-muted-foreground">No open incidents.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {incidents.map(inc => (
+                    <div key={inc.id} className="px-5 py-3.5 space-y-2">
+                      <p className="text-xs text-foreground leading-snug">{inc.title}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <StatusBadge status={incidentStatusToUi(inc.status)} />
+                        <Mono className="text-muted-foreground">{inc.project?.slug ?? ""}</Mono>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{formatRelativeTime(inc.openedAt)}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{inc.opened}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </SectionCard>
           </div>
         </div>
 
         <SectionCard title="Recent deployments">
-          <div className="divide-y divide-border">
-            {ALL_RECENT.map(dep => (
-              <button
-                key={dep.id}
-                onClick={() => onNav({ page: "deployment", projectId: dep.project, deploymentId: dep.id })}
-                className="w-full px-5 py-3 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
-              >
-                <div className="w-24 flex-shrink-0">
-                  <StatusBadge status={dep.status} pulse={dep.status === "in-progress"} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">{dep.message}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Mono className="text-muted-foreground">{dep.commit}</Mono>
-                    <span className="text-muted-foreground text-xs">·</span>
-                    <Mono className="text-muted-foreground">{dep.project}</Mono>
+          {recentDeployments.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-muted-foreground">No deployments yet.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {recentDeployments.map(dep => (
+                <button
+                  key={dep.id}
+                  onClick={() => onNav({
+                    page: "deployment",
+                    projectId: dep.environment?.project?.id ?? "",
+                    deploymentId: dep.id,
+                  })}
+                  className="w-full px-5 py-3 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
+                >
+                  <div className="w-24 flex-shrink-0">
+                    <StatusBadge status={deploymentStatusToUi(dep.status)} pulse={dep.status === "RUNNING"} />
                   </div>
-                </div>
-                <div className="text-right flex-shrink-0 text-xs text-muted-foreground">
-                  <div>{dep.timestamp}</div>
-                  {dep.duration && <div className="font-mono mt-0.5">{dep.duration}</div>}
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground truncate">{dep.commitMessage}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Mono className="text-muted-foreground">{dep.commitSha.slice(0, 7)}</Mono>
+                      <span className="text-muted-foreground text-xs">·</span>
+                      <Mono className="text-muted-foreground">{dep.environment?.project?.slug ?? ""}</Mono>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0 text-xs text-muted-foreground">
+                    <div>{formatRelativeTime(dep.createdAt)}</div>
+                    {dep.duration != null && <div className="font-mono mt-0.5">{formatDuration(dep.duration)}</div>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </SectionCard>
       </div>
 
       {showNewProject && (
         <NewProjectModal
           onClose={() => setShowNewProject(false)}
-          onCreated={loadProjects}
+          onCreated={loadAll}
         />
       )}
     </PageFade>

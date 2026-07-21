@@ -1,12 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { User, Link2, Building2, Shield, Github, Globe } from "lucide-react";
+import type { NavState } from "../lib/types";
 import { PageFade, Btn, Field, Av, cn } from "../components/primitives";
 import { TopBar } from "../components/TopBar";
+import { usersApi, type UserProfile, type AuthProviderLink, type Session } from "../lib/usersApi";
+import { organizationsApi, type Organization } from "../lib/organizationsApi";
+import { authApi } from "../lib/api";
+import { useAuth } from "../lib/AuthContext";
+import { formatRelativeTime } from "../lib/statusMap";
 
-export function SettingsPage() {
+function initials(fullName: string) {
+  return fullName.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+}
+
+export function SettingsPage({ onNav }: { onNav: (s: NavState) => void }) {
+  const { refreshProfile } = useAuth();
   const [section, setSection] = useState<"profile" | "accounts" | "org" | "security">("profile");
-  const [name, setName] = useState("Alice Chen");
-  const [email, setEmail] = useState("alice@acme.com");
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const [providers, setProviders] = useState<AuthProviderLink[]>([]);
+
+  const [org, setOrg] = useState<Organization | null>(null);
+  const [orgName, setOrgName] = useState("");
+  const [orgSlug, setOrgSlug] = useState("");
+  const [savingOrg, setSavingOrg] = useState(false);
+  const [deletingOrg, setDeletingOrg] = useState(false);
+
+  const [sessions, setSessions] = useState<Session[]>([]);
+
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const loadAll = useCallback(() => {
+    usersApi.getProfile().then(p => { setProfile(p); setFullName(p.fullName); });
+    usersApi.getAuthProviders().then(setProviders);
+    usersApi.getSessions().then(setSessions);
+    organizationsApi.list().then(orgs => {
+      const first = orgs[0] ?? null;
+      setOrg(first);
+      if (first) { setOrgName(first.name); setOrgSlug(first.slug); }
+    });
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const sections = [
     { id: "profile",  label: "Profile",            icon: User      },
@@ -24,16 +63,91 @@ export function SettingsPage() {
     </svg>
   );
 
+  async function handleSaveProfile() {
+    setSavingProfile(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await usersApi.updateProfile({ fullName });
+      setProfile(updated);
+      refreshProfile();
+      setNotice("Profile updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function handleDisconnect(provider: string) {
+    setError(null);
+    try {
+      await usersApi.disconnectProvider(provider);
+      setProviders(prev => prev.filter(p => p.provider !== provider));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to disconnect ${provider}`);
+    }
+  }
+
+  async function handleSaveOrg() {
+    if (!org) return;
+    setSavingOrg(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await organizationsApi.update(org.id, { name: orgName, slug: orgSlug });
+      setOrg(updated);
+      setNotice("Organization updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update organization");
+    } finally {
+      setSavingOrg(false);
+    }
+  }
+
+  async function handleDeleteOrg() {
+    if (!org) return;
+    if (!confirm(`Permanently delete "${org.name}"? This cannot be undone.`)) return;
+    setDeletingOrg(true);
+    setError(null);
+    try {
+      await organizationsApi.delete(org.id);
+      setOrg(null);
+      setNotice("Organization deleted.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `${err.message} — an organization with existing projects usually can't be deleted until they're removed first.`
+          : "Failed to delete organization"
+      );
+    } finally {
+      setDeletingOrg(false);
+    }
+  }
+
+  async function handleRevokeSession(id: string) {
+    setError(null);
+    try {
+      await usersApi.revokeSession(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to revoke session");
+    }
+  }
+
+  const hasGithub = providers.some(p => p.provider === "github");
+  const hasGoogle = providers.some(p => p.provider === "google");
+
   return (
     <PageFade>
-      <TopBar title="Settings" />
+      <TopBar title="Settings" onNav={onNav} />
       <div className="p-5 max-w-5xl">
         <div className="flex gap-6">
           <nav className="w-44 flex-shrink-0 space-y-px">
             {sections.map(s => (
               <button
                 key={s.id}
-                onClick={() => setSection(s.id)}
+                onClick={() => { setSection(s.id); setError(null); setNotice(null); }}
                 className={cn(
                   "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors cursor-pointer",
                   section === s.id
@@ -48,23 +162,28 @@ export function SettingsPage() {
           </nav>
 
           <div className="flex-1 space-y-4">
-            {section === "profile" && (
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
+
+            {section === "profile" && profile && (
               <div className="bg-card border border-border rounded-lg p-5 space-y-5">
                 <h2 className="text-sm font-medium text-foreground">Profile</h2>
                 <div className="flex items-center gap-4">
-                  <Av initials="AC" size="lg" />
+                  <Av initials={initials(profile.fullName)} size="lg" />
                   <div>
-                    <Btn variant="secondary" size="sm">Change photo</Btn>
-                    <p className="text-xs text-muted-foreground mt-1.5">JPG, GIF or PNG. 1MB max.</p>
+                    <Btn variant="secondary" size="sm" disabled title="Avatar upload isn't built yet">Change photo</Btn>
+                    <p className="text-xs text-muted-foreground mt-1.5">Not implemented yet.</p>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <Field label="Full name"      value={name}  onChange={setName}  />
-                  <Field label="Email address"  type="email"  value={email} onChange={setEmail} />
-                  <Field label="Job title"      value="Senior Engineer" onChange={() => {}} />
+                  <Field label="Full name" value={fullName} onChange={setFullName} />
+                  <Field label="Email address" type="email" value={profile.email} onChange={() => {}} />
+                  <p className="text-xs text-muted-foreground -mt-2">Email changes aren't supported yet.</p>
                 </div>
                 <div className="pt-4 border-t border-border flex justify-end">
-                  <Btn variant="primary" size="sm">Save changes</Btn>
+                  <Btn variant="primary" size="sm" onClick={handleSaveProfile} disabled={savingProfile}>
+                    {savingProfile ? "Saving…" : "Save changes"}
+                  </Btn>
                 </div>
               </div>
             )}
@@ -73,24 +192,40 @@ export function SettingsPage() {
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-5 py-4 border-b border-border">
                   <h2 className="text-sm font-medium text-foreground">Connected accounts</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Connect accounts to enable OAuth login and repo access.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Connect accounts to enable OAuth login.</p>
                 </div>
                 <div className="divide-y divide-border">
                   <div className="px-5 py-4 flex items-center gap-4">
                     <Github className="w-5 h-5 text-foreground" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">GitHub</p>
-                      <p className="text-xs text-muted-foreground">Connected as @alice-chen</p>
+                      <p className="text-xs text-muted-foreground">{hasGithub ? "Connected" : "Not connected"}</p>
                     </div>
-                    <Btn variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10">Disconnect</Btn>
+                    {hasGithub ? (
+                      <Btn variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleDisconnect("github")}>
+                        Disconnect
+                      </Btn>
+                    ) : (
+                      <a href={authApi.githubLoginUrl()}>
+                        <Btn variant="secondary" size="sm">Connect</Btn>
+                      </a>
+                    )}
                   </div>
                   <div className="px-5 py-4 flex items-center gap-4">
                     <GoogleSvg />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">Google</p>
-                      <p className="text-xs text-muted-foreground">Not connected</p>
+                      <p className="text-xs text-muted-foreground">{hasGoogle ? "Connected" : "Not connected"}</p>
                     </div>
-                    <Btn variant="secondary" size="sm">Connect</Btn>
+                    {hasGoogle ? (
+                      <Btn variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleDisconnect("google")}>
+                        Disconnect
+                      </Btn>
+                    ) : (
+                      <a href={authApi.googleLoginUrl()}>
+                        <Btn variant="secondary" size="sm">Connect</Btn>
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
@@ -98,71 +233,65 @@ export function SettingsPage() {
 
             {section === "org" && (
               <div className="space-y-4">
-                <div className="bg-card border border-border rounded-lg p-5 space-y-4">
-                  <h2 className="text-sm font-medium text-foreground">Organization settings</h2>
-                  <Field label="Organization name" value="Acme Corp" onChange={() => {}} />
-                  <Field label="Slug" value="acme-corp" onChange={() => {}} />
-                  <div className="pt-4 border-t border-border flex justify-end">
-                    <Btn variant="primary" size="sm">Save changes</Btn>
-                  </div>
-                </div>
-                <div className="bg-card border border-destructive/25 rounded-lg p-5">
-                  <h3 className="text-sm font-medium text-foreground mb-3">Danger zone</h3>
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-foreground">Delete organization</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Permanently delete this org and all its data. This cannot be undone.</p>
+                {org ? (
+                  <>
+                    <div className="bg-card border border-border rounded-lg p-5 space-y-4">
+                      <h2 className="text-sm font-medium text-foreground">Organization settings</h2>
+                      <Field label="Organization name" value={orgName} onChange={setOrgName} />
+                      <Field label="Slug" value={orgSlug} onChange={setOrgSlug} />
+                      <div className="pt-4 border-t border-border flex justify-end">
+                        <Btn variant="primary" size="sm" onClick={handleSaveOrg} disabled={savingOrg}>
+                          {savingOrg ? "Saving…" : "Save changes"}
+                        </Btn>
+                      </div>
                     </div>
-                    <Btn variant="danger" size="sm">Delete org</Btn>
-                  </div>
-                </div>
+                    <div className="bg-card border border-destructive/25 rounded-lg p-5">
+                      <h3 className="text-sm font-medium text-foreground mb-3">Danger zone</h3>
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm text-foreground">Delete organization</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Permanently delete this org and all its data. This cannot be undone.</p>
+                        </div>
+                        <Btn variant="danger" size="sm" onClick={handleDeleteOrg} disabled={deletingOrg}>
+                          {deletingOrg ? "Deleting…" : "Delete org"}
+                        </Btn>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No organization to manage.</p>
+                )}
               </div>
             )}
 
             {section === "security" && (
-              <div className="space-y-4">
-                <div className="bg-card border border-border rounded-lg p-5 space-y-5">
-                  <h2 className="text-sm font-medium text-foreground">Two-factor authentication</h2>
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-foreground">Authenticator app</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Use an app like 1Password or Authy to generate time-based codes.</p>
-                    </div>
-                    <Btn variant="secondary" size="sm">Enable</Btn>
-                  </div>
-                  <div className="pt-4 border-t border-border flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-foreground">Passkeys</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Sign in with biometrics or a hardware security key.</p>
-                    </div>
-                    <Btn variant="secondary" size="sm">Add passkey</Btn>
-                  </div>
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="px-5 py-4 border-b border-border">
+                  <h2 className="text-sm font-medium text-foreground">Active sessions</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Each entry is a refresh token issued at login. Revoking one signs that session out.
+                  </p>
                 </div>
-
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border">
-                    <h2 className="text-sm font-medium text-foreground">Active sessions</h2>
-                  </div>
+                {sessions.length === 0 ? (
+                  <p className="px-5 py-4 text-sm text-muted-foreground">No active sessions.</p>
+                ) : (
                   <div className="divide-y divide-border">
-                    {[
-                      { browser: "Chrome 121", os: "macOS 14.3", loc: "San Francisco, CA", current: true,  time: "now"   },
-                      { browser: "Safari 17",  os: "iOS 17.3",   loc: "San Francisco, CA", current: false, time: "2d ago" },
-                    ].map((s, i) => (
-                      <div key={i} className="px-5 py-3.5 flex items-center gap-4">
+                    {sessions.map(s => (
+                      <div key={s.id} className="px-5 py-3.5 flex items-center gap-4">
                         <Globe className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         <div className="flex-1">
-                          <p className="text-sm text-foreground">{s.browser} · {s.os}</p>
-                          <p className="text-xs text-muted-foreground">{s.loc} · {s.time}</p>
+                          <p className="text-sm text-foreground">Session {s.id.slice(0, 8)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Issued {formatRelativeTime(s.createdAt)} · expires {new Date(s.expiresAt).toLocaleDateString()}
+                          </p>
                         </div>
-                        {s.current ? (
-                          <span className="text-xs px-2 py-0.5 rounded" style={{ color: "#5fa86e", background: "rgba(95,168,110,0.13)" }}>Current</span>
-                        ) : (
-                          <Btn variant="ghost" size="sm" className="text-destructive">Revoke</Btn>
-                        )}
+                        <Btn variant="ghost" size="sm" className="text-destructive" onClick={() => handleRevokeSession(s.id)}>
+                          Revoke
+                        </Btn>
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,17 +10,34 @@ export class DeploymentsService {
 
   constructor(private prisma: PrismaService) {}
 
-  async trigger(projectId: string, userId: string, dto: TriggerDeploymentDto) {
+  async trigger(
+    projectId: string,
+    userId: string,
+    dto: TriggerDeploymentDto,
+  ) {
     const environment = await this.prisma.environment.findFirst({
-      where: { projectId, environmentType: 'PRODUCTION' },
+      where: {
+        projectId,
+        environmentType: 'PRODUCTION',
+        project: {
+          organization: {
+            members: {
+              some: { userId },
+            },
+          },
+        },
+      },
     });
+
     if (!environment) {
-      throw new NotFoundException('No production environment found for this project');
+      throw new NotFoundException(
+        'Project or production environment not found',
+      );
     }
 
     const commitSha = crypto.randomBytes(20).toString('hex');
 
-    return this.prisma.deployment.create({
+    const deployment = await this.prisma.deployment.create({
       data: {
         environmentId: environment.id,
         triggeredById: userId,
@@ -30,72 +47,250 @@ export class DeploymentsService {
         status: 'QUEUED',
       },
     });
-  }
 
-  findAllByProject(projectId: string) {
-    return this.prisma.deployment.findMany({
-      where: { environment: { projectId } },
-      orderBy: { createdAt: 'desc' },
-      include: { triggeredBy: { select: { id: true, fullName: true, username: true } } },
-    });
-  }
+    await this.addLog(
+      deployment.id,
+      'INFO',
+      `Deployment queued for ${deployment.branch}@${commitSha.slice(0, 7)}`,
+    );
 
-  async findOne(id: string) {
-    const deployment = await this.prisma.deployment.findUnique({
-      where: { id },
-      include: {
-        triggeredBy: { select: { id: true, fullName: true, username: true } },
-        environment: { include: { project: true } },
-      },
-    });
-    if (!deployment) throw new NotFoundException('Deployment not found');
     return deployment;
   }
 
-  // Simulated deployment lifecycle — runs every 3s, advances any deployment
-  // that's been sitting in QUEUED or RUNNING long enough to the next stage.
+  findAllByProject(projectId: string, userId: string) {
+    return this.prisma.deployment.findMany({
+      where: {
+        environment: {
+          project: {
+            id: projectId,
+            organization: {
+              members: {
+                some: { userId },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        triggeredBy: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+          },
+        },
+      },
+    });
+  }
+
+  async findOne(id: string, userId: string) {
+    const deployment = await this.prisma.deployment.findFirst({
+      where: {
+        id,
+        environment: {
+          project: {
+            organization: {
+              members: {
+                some: { userId },
+              },
+            },
+          },
+        },
+      },
+      include: {
+        triggeredBy: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+          },
+        },
+        environment: {
+          include: {
+            project: true,
+          },
+        },
+      },
+    });
+
+    if (!deployment) {
+      throw new NotFoundException('Deployment not found');
+    }
+
+    return deployment;
+  }
+
+  async findLogs(deploymentId: string, userId: string) {
+    const logs = await this.prisma.deploymentLog.findMany({
+      where: {
+        deploymentId,
+        deployment: {
+          environment: {
+            project: {
+              organization: {
+                members: {
+                  some: { userId },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { timestamp: 'asc' },
+    });
+
+    return logs;
+  }
+
+  findAllRecent(userId: string, limit = 20) {
+    return this.prisma.deployment.findMany({
+      where: {
+        environment: {
+          project: {
+            organization: {
+              members: {
+                some: { userId },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        environment: {
+          include: {
+            project: true,
+          },
+        },
+        triggeredBy: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+          },
+        },
+      },
+    });
+  }
+
+  private async addLog(
+    deploymentId: string,
+    logLevel: 'INFO' | 'WARNING' | 'ERROR' | 'DEBUG',
+    message: string,
+    timestamp = new Date(),
+  ) {
+    return this.prisma.deploymentLog.create({
+      data: {
+        deploymentId,
+        logLevel,
+        message,
+        timestamp,
+      },
+    });
+  }
+
   @Interval(3000)
   async advanceDeployments() {
     const now = new Date();
 
-    // QUEUED -> RUNNING after ~2s
     const queued = await this.prisma.deployment.findMany({
       where: {
         status: 'QUEUED',
-        createdAt: { lte: new Date(now.getTime() - 2000) },
+        createdAt: {
+          lte: new Date(now.getTime() - 2000),
+        },
       },
     });
-    for (const dep of queued) {
+
+    for (const deployment of queued) {
       await this.prisma.deployment.update({
-        where: { id: dep.id },
-        data: { status: 'RUNNING', startedAt: now },
+        where: { id: deployment.id },
+        data: {
+          status: 'RUNNING',
+          startedAt: now,
+        },
       });
-      this.logger.log(`Deployment ${dep.id} -> RUNNING`);
+
+      await this.addLog(
+        deployment.id,
+        'INFO',
+        'Cloning repository...',
+        new Date(now.getTime() + 100),
+      );
+      await this.addLog(
+        deployment.id,
+        'INFO',
+        'Installing dependencies...',
+        new Date(now.getTime() + 400),
+      );
+      await this.addLog(
+        deployment.id,
+        'INFO',
+        'Running build...',
+        new Date(now.getTime() + 800),
+      );
     }
 
-    // RUNNING -> SUCCESS/FAILED after ~8-12s of running
     const running = await this.prisma.deployment.findMany({
       where: {
         status: 'RUNNING',
-        startedAt: { lte: new Date(now.getTime() - 8000) },
+        startedAt: {
+          lte: new Date(now.getTime() - 8000),
+        },
       },
     });
-    for (const dep of running) {
-      const succeeded = Math.random() > 0.1; // 90% success rate
+
+    for (const deployment of running) {
+      const succeeded = Math.random() > 0.1;
       const finishedAt = now;
-      const duration = dep.startedAt
-        ? Math.round((finishedAt.getTime() - dep.startedAt.getTime()) / 1000)
+      const duration = deployment.startedAt
+        ? Math.round(
+            (finishedAt.getTime() - deployment.startedAt.getTime()) / 1000,
+          )
         : null;
 
       await this.prisma.deployment.update({
-        where: { id: dep.id },
+        where: { id: deployment.id },
         data: {
           status: succeeded ? 'SUCCESS' : 'FAILED',
           finishedAt,
           duration,
         },
       });
-      this.logger.log(`Deployment ${dep.id} -> ${succeeded ? 'SUCCESS' : 'FAILED'}`);
+
+      if (succeeded) {
+        await this.addLog(
+          deployment.id,
+          'INFO',
+          'Build completed successfully',
+          finishedAt,
+        );
+        await this.addLog(
+          deployment.id,
+          'INFO',
+          'Deployment is now live',
+          new Date(finishedAt.getTime() + 100),
+        );
+      } else {
+        await this.addLog(
+          deployment.id,
+          'ERROR',
+          'Build failed: process exited with code 1',
+          finishedAt,
+        );
+        await this.addLog(
+          deployment.id,
+          'WARNING',
+          'Rolling back to previous deployment',
+          new Date(finishedAt.getTime() + 100),
+        );
+      }
+
+      this.logger.log(
+        `Deployment ${deployment.id} -> ${succeeded ? 'SUCCESS' : 'FAILED'}`,
+      );
     }
   }
 }

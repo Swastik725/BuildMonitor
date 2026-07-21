@@ -1,13 +1,3 @@
-interface ImportMetaEnv {
-  readonly VITE_API_URL?: string;
-}
-
-declare global {
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
-}
-
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 function getAccessToken() {
@@ -28,6 +18,8 @@ export function clearTokens() {
   localStorage.removeItem("refreshToken");
 }
 
+// Tries to use the current refresh token to get a new access+refresh pair.
+// Returns true if it worked, false if the user needs to log in again.
 async function tryRefresh(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
@@ -45,6 +37,8 @@ async function tryRefresh(): Promise<boolean> {
   return true;
 }
 
+// Wraps fetch: attaches the access token, and on a 401 tries exactly one
+// silent refresh + retry before giving up. Throws on any other failure.
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const accessToken = getAccessToken();
 
@@ -75,6 +69,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     throw new Error(body.message || `Request failed: ${res.status}`);
   }
 
+  // Handle empty responses (e.g. 204 No Content)
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }

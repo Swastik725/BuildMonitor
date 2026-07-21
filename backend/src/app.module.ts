@@ -1,32 +1,33 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
+
 import { PrismaModule } from './prisma/prisma.module';
-import { ProjectsModule } from './projects/projects.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
-import { AuthModule } from './auth/auth.module';import { ScheduleModule } from '@nestjs/schedule';
+import { ProjectsModule } from './projects/projects.module';
 import { DeploymentsModule } from './deployments/deployments.module';
+import { HealthChecksModule } from './health-checks/health-checks.module';
 import { IncidentsModule } from './incidents/incidents.module';
 
-
 @Module({
-  imports: [ProjectsModule, OrganizationsModule, AuthModule, DeploymentsModule, ScheduleModule.forRoot(),  IncidentsModule,
-     ConfigModule.forRoot({
+  imports: [
+    ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
 
-    // Registers the default Redis connection that all BullMQ queues
-    // and workers in the app will use, unless overridden per-queue.
-    BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: Number(process.env.REDIS_PORT) || 6379,
-      },
-    }),
+    ScheduleModule.forRoot(),
 
     PrismaModule,
-
+    AuthModule,
+    UsersModule,
+    OrganizationsModule,
+    ProjectsModule,
+    DeploymentsModule,
+    HealthChecksModule,
+    IncidentsModule,
   ],
 })
 export class AppModule {}

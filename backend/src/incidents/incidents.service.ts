@@ -6,35 +6,105 @@ import { CreateIncidentDto } from './dto/create-incident.dto';
 export class IncidentsService {
   constructor(private prisma: PrismaService) {}
 
-  create(projectId: string, dto: CreateIncidentDto) {
+  private async ensureProjectAccess(projectId: string, userId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        id: projectId,
+        organization: {
+          members: {
+            some: { userId },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+  }
+
+  async create(
+    projectId: string,
+    userId: string,
+    dto: CreateIncidentDto,
+  ) {
+    await this.ensureProjectAccess(projectId, userId);
+
     return this.prisma.incident.create({
-      data: { projectId, title: dto.title },
+      data: {
+        projectId,
+        title: dto.title,
+      },
     });
   }
 
-  // Used by the dashboard — recent open/investigating incidents across all projects
-  findAllOpen() {
+  findAllOpen(userId: string) {
     return this.prisma.incident.findMany({
-      where: { status: { in: ['OPEN', 'INVESTIGATING'] } },
-      orderBy: { openedAt: 'desc' },
-      include: { project: { select: { name: true, slug: true } } },
+      where: {
+        status: {
+          in: ['OPEN', 'INVESTIGATING'],
+        },
+        project: {
+          organization: {
+            members: {
+              some: { userId },
+            },
+          },
+        },
+      },
+      orderBy: {
+        openedAt: 'desc',
+      },
+      include: {
+        project: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+      },
     });
   }
 
-  findAllByProject(projectId: string) {
+  async findAllByProject(projectId: string, userId: string) {
+    await this.ensureProjectAccess(projectId, userId);
+
     return this.prisma.incident.findMany({
       where: { projectId },
-      orderBy: { openedAt: 'desc' },
+      orderBy: {
+        openedAt: 'desc',
+      },
     });
   }
 
-  async resolve(id: string) {
-    const incident = await this.prisma.incident.findUnique({ where: { id } });
-    if (!incident) throw new NotFoundException('Incident not found');
+  async resolve(id: string, userId: string) {
+    const incident = await this.prisma.incident.findFirst({
+      where: {
+        id,
+        project: {
+          organization: {
+            members: {
+              some: { userId },
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!incident) {
+      throw new NotFoundException('Incident not found');
+    }
 
     return this.prisma.incident.update({
       where: { id },
-      data: { status: 'RESOLVED', resolvedAt: new Date() },
+      data: {
+        status: 'RESOLVED',
+        resolvedAt: new Date(),
+      },
     });
   }
 }

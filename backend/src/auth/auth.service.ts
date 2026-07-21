@@ -15,31 +15,57 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findFirst({
-      where: { OR: [{ email: dto.email }, { username: dto.username }] },
-    });
-    if (existing) {
-      throw new ConflictException('Email or username already in use');
-    }
+  const existing = await this.prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: dto.email },
+        { username: dto.username },
+      ],
+    },
+  });
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+  if (existing) {
+    throw new ConflictException('Email or username already in use');
+  }
 
-    const user = await this.prisma.user.create({
+  const passwordHash = await bcrypt.hash(dto.password, 10);
+
+  const user = await this.prisma.$transaction(async tx => {
+    const createdUser = await tx.user.create({
       data: {
         email: dto.email,
         username: dto.username,
         passwordHash,
         fullName: dto.fullName,
         authProviders: {
-          create: { provider: 'local', providerId: dto.email },
+          create: {
+            provider: 'local',
+            providerId: dto.email,
+          },
         },
       },
     });
 
-    const { passwordHash: _, ...safeUser } = user;
-    return safeUser;
-  }
+    await tx.organization.create({
+      data: {
+        name: `${dto.fullName}'s Workspace`,
+        slug: `personal-${createdUser.id.slice(0, 8)}`,
+        members: {
+          create: {
+            userId: createdUser.id,
+            role: 'OWNER',
+          },
+        },
+      },
+    });
 
+    return createdUser;
+  });
+
+  const { passwordHash: _, ...safeUser } = user;
+
+  return safeUser;
+}
   async validateUser(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.passwordHash) {
