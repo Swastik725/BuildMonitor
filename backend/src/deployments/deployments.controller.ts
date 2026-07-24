@@ -4,34 +4,30 @@ import {
   Get,
   Param,
   Post,
-  Req,
+  Patch,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { DeploymentsService } from './deployments.service';
 import { TriggerDeploymentDto } from './dto/trigger-deployment.dto';
-
-type AuthenticatedRequest = {
-  user: {
-    userId: string;
-    email: string;
-  };
-};
 
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class DeploymentsController {
-  constructor(private deploymentsService: DeploymentsService) {}
+  constructor(
+    private readonly deploymentsService: DeploymentsService,
+  ) {}
 
   @Post('projects/:projectId/deployments')
   trigger(
     @Param('projectId') projectId: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
     @Body() dto: TriggerDeploymentDto,
   ) {
     return this.deploymentsService.trigger(
       projectId,
-      req.user.userId,
+      user.id,
       dto,
     );
   }
@@ -39,32 +35,56 @@ export class DeploymentsController {
   @Get('projects/:projectId/deployments')
   findAllByProject(
     @Param('projectId') projectId: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
     return this.deploymentsService.findAllByProject(
       projectId,
-      req.user.userId,
+      user.id,
     );
   }
 
   @Get('deployments')
-  findAllRecent(@Req() req: AuthenticatedRequest) {
-    return this.deploymentsService.findAllRecent(req.user.userId);
+  findAllRecent(
+    @CurrentUser() user: any,
+  ) {
+    return this.deploymentsService.findAllRecent(user.id);
   }
 
   @Get('deployments/:id')
   findOne(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
-    return this.deploymentsService.findOne(id, req.user.userId);
+    return this.deploymentsService.findOne(
+      id,
+      user.id,
+    );
   }
 
   @Get('deployments/:id/logs')
   findLogs(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
-    return this.deploymentsService.findLogs(id, req.user.userId);
+    return this.deploymentsService.findLogs(
+      id,
+      user.id,
+    );
+  }
+
+  @Patch('deployments/:id/retry')
+  retry(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.deploymentsService.retry(id, user.id);
+  }
+
+  @Patch('deployments/:id/cancel')
+  cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.deploymentsService.cancel(id, user.id);
   }
 }

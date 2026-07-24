@@ -1,7 +1,8 @@
-import { Controller, Get, Patch, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UsersService } from './users.service.js';
-import { UpdateProfileDto } from './dto/update-profile.dto.js';
+import { UsersService } from './users.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users/me')
@@ -9,32 +10,32 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  getProfile(@Req() req) {
-    return this.usersService.getProfile(req.user.userId);
+  getProfile(@CurrentUser() user: { id: string }) {
+    return this.usersService.getProfile(user.id);
   }
 
   @Patch()
-  updateProfile(@Req() req, @Body() dto: UpdateProfileDto) {
-    return this.usersService.updateProfile(req.user.userId, dto);
+  updateProfile(@CurrentUser() user: { id: string }, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(user.id, dto);
   }
 
   @Get('auth-providers')
-  getAuthProviders(@Req() req) {
-    return this.usersService.getAuthProviders(req.user.userId);
+  getAuthProviders(@CurrentUser() user: { id: string }) {
+    return this.usersService.getAuthProviders(user.id);
   }
 
   @Delete('auth-providers/:provider')
-  disconnectProvider(@Req() req, @Param('provider') provider: string) {
-    return this.usersService.disconnectProvider(req.user.userId, provider);
+  disconnectProvider(@CurrentUser() user: { id: string }, @Param('provider') provider: string) {
+    return this.usersService.disconnectProvider(user.id, provider);
   }
 
   @Get('sessions')
-  getSessions(@Req() req) {
-    return this.usersService.getSessions(req.user.userId);
+  getSessions(@CurrentUser() user: { id: string }) {
+    return this.usersService.getSessions(user.id);
   }
 
   @Delete('sessions/:id')
-  revokeSession(@Req() req, @Param('id') id: string) {
-    return this.usersService.revokeSession(req.user.userId, id);
+  revokeSession(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.usersService.revokeSession(user.id, id);
   }
 }

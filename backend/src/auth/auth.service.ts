@@ -173,14 +173,28 @@ export class AuthService {
   let user = await this.prisma.user.findUnique({ where: { email: profile.email } });
 
   if (!user) {
-    user = await this.prisma.user.create({
-      data: {
-        email: profile.email,
-        username: profile.email.split('@')[0] + '_' + Math.random().toString(36).slice(2, 7),
-        fullName: profile.fullName,
-        avatarUrl: profile.avatarUrl,
-        emailVerified: true,
-      },
+    // OAuth users need the same usable first-run experience as email/password
+    // registrations: create their personal organization and owner membership atomically.
+    user = await this.prisma.$transaction(async tx => {
+      const createdUser = await tx.user.create({
+        data: {
+          email: profile.email,
+          username: profile.email.split('@')[0] + '_' + Math.random().toString(36).slice(2, 7),
+          fullName: profile.fullName,
+          avatarUrl: profile.avatarUrl,
+          emailVerified: true,
+        },
+      });
+
+      await tx.organization.create({
+        data: {
+          name: `${profile.fullName}'s Workspace`,
+          slug: `personal-${createdUser.id.slice(0, 8)}`,
+          members: { create: { userId: createdUser.id, role: 'OWNER' } },
+        },
+      });
+
+      return createdUser;
     });
   }
 
@@ -191,5 +205,8 @@ export class AuthService {
 
   return this.generateTokens(user.id, user.email);
 }
+
 }
+
+
 

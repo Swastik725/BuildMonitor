@@ -1,17 +1,17 @@
 # 💥 FAILURE_SCENARIOS.md
 
-Version: 2.0 (V1 MVP)
+Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-Redis/Celery failure scenarios removed — not part of V1 architecture. GitHub failure scenarios
+Redis/Celery failure scenarios removed — not part of current build architecture. GitHub failure scenarios
 narrowed to what's relevant for a manual, read-only, no-webhook integration.
 
 ---
 
-# Authentication (V1)
+# Authentication (current build)
 
 - Expired JWT
 - Invalid JWT
@@ -20,13 +20,13 @@ narrowed to what's relevant for a manual, read-only, no-webhook integration.
 
 ---
 
-# GitHub (V1)
+# GitHub (current build)
 
 - Repo not found / private repo without access
 - GitHub API rate limit hit during manual sync
 - Repository renamed or deleted upstream since last sync
 
-_Removed (post-V1, no webhooks in V1): invalid OAuth, invalid webhook signature._
+_Removed (next phase, no webhooks in current build): invalid OAuth, invalid webhook signature._
 
 ---
 
@@ -61,7 +61,7 @@ Retry (next tick) → Log → Graceful failure (never crash the whole app for on
 
 ---
 
-# Post-V1
+# next phase
 
 Circuit breakers, dead letter queues, backup workers, Redis/Celery-specific failure handling.
 
@@ -69,4 +69,5 @@ Circuit breakers, dead letter queues, backup workers, Redis/Celery-specific fail
 
 # Status
 
-Building (V1)
+Building (current build)
+

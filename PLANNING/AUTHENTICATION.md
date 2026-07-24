@@ -1,19 +1,19 @@
 # 🔐 AUTHENTICATION.md
 
-Version: 2.0 (V1 MVP)
+Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-GitHub OAuth, email verification, and forgot/reset password are **post-V1**. V1 ships
+GitHub OAuth, email verification, and forgot/reset password are **next phase**. current build ships
 email+password registration/login with JWT access + refresh tokens only. This is enough to
 demonstrate real auth engineering (hashing, token issuance, refresh rotation, guards) without the
 extra surface area of OAuth callbacks and transactional email.
 
 ---
 
-# Authentication Goals (V1)
+# Authentication Goals (current build)
 
 - Secure user authentication
 - Stateless API authentication (JWT)
@@ -21,24 +21,24 @@ extra surface area of OAuth callbacks and transactional email.
 
 ---
 
-# Authentication Methods (V1)
+# Authentication Methods (current build)
 
 - Email + Password only
 
-_Post-V1: GitHub OAuth, Google OAuth, GitLab OAuth._
+_next phase: GitHub OAuth, Google OAuth, GitLab OAuth._
 
 ---
 
-# Password Security (V1)
+# Password Security (current build)
 
 - bcrypt (or argon2 if trivial to add) password hashing
 - Password confirmation on register (frontend validation via Zod)
 
-_Post-V1: forgot password, reset password, email verification._
+_next phase: forgot password, reset password, email verification._
 
 ---
 
-# Tokens (V1)
+# Tokens (current build)
 
 Access Token
 - JWT, 15 minutes
@@ -48,18 +48,18 @@ Refresh Token
 
 ---
 
-# Session Flow (V1)
+# Session Flow (current build)
 
 ```
 Register → Auto-verified, personal org created → Login → Issue Tokens
    → Authenticated Requests → Refresh Token → Logout (revoke refresh token)
 ```
 
-(No email verification step in V1 — accounts are usable immediately after registration.)
+(No email verification step in current build — accounts are usable immediately after registration.)
 
 ---
 
-# APIs (V1)
+# APIs (current build)
 
 ```
 POST /auth/register
@@ -71,17 +71,17 @@ GET  /auth/me
 
 ---
 
-# Database Tables Used (V1)
+# Database Tables Used (current build)
 
 ```
 users
 ```
 (`refresh_tokens` — add a minimal table or store hashed refresh token on the user row; keep it
-simple. `github_accounts`, `email_verification_tokens`, `password_reset_tokens` are post-V1.)
+simple. `github_accounts`, `email_verification_tokens`, `password_reset_tokens` are next phase.)
 
 ---
 
-# Security (V1)
+# Security (current build)
 
 - Password hashing
 - JWT validation on every protected route
@@ -90,7 +90,7 @@ simple. `github_accounts`, `email_verification_tokens`, `password_reset_tokens` 
 
 ---
 
-# Edge Cases (V1)
+# Edge Cases (current build)
 
 - Expired/invalid JWT → 401
 - Reused/revoked refresh token → force re-login
@@ -100,4 +100,5 @@ simple. `github_accounts`, `email_verification_tokens`, `password_reset_tokens` 
 
 # Status
 
-Building (V1)
+Building (current build)
+

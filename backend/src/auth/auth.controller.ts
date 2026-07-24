@@ -5,10 +5,26 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { CurrentUser } from './current-user.decorator';
+import { getFrontendUrl } from '../config/runtime';
+
+function buildOAuthRedirect(tokens: { accessToken: string; refreshToken: string }) {
+  const url = new URL('/oauth-success', getFrontendUrl());
+  url.searchParams.set('accessToken', tokens.accessToken);
+  url.searchParams.set('refreshToken', tokens.refreshToken);
+  return url.toString();
+}
+
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@CurrentUser() user: any) {
+    return user;
+  }
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
@@ -35,10 +51,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req, @Res() res: Response) {
     const tokens = await this.authService.validateOAuthUser(req.user, 'google');
-    // Redirect to frontend with tokens (adjust URL to your actual frontend)
-    res.redirect(
-      `http://localhost:5173/oauth-success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`,
-    );
+    res.redirect(buildOAuthRedirect(tokens));
   }
 
   @Get('github')
@@ -49,8 +62,6 @@ githubAuth() {}
 @UseGuards(AuthGuard('github'))
 async githubAuthCallback(@Req() req, @Res() res: Response) {
   const tokens = await this.authService.validateOAuthUser(req.user, 'github');
-  res.redirect(
-    `http://localhost:5173/oauth-success?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`,
-  );
+  res.redirect(buildOAuthRedirect(tokens));
 }
 }

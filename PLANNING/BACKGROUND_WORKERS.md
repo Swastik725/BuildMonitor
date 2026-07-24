@@ -1,18 +1,18 @@
 # ⚙️ BACKGROUND_WORKERS.md
 
-Version: 2.0 (V1 MVP)
+Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-Celery + Redis are **post-V1**. There is no real asynchronous workload in the V1 feature set
+Celery + Redis are **next phase**. There is no real asynchronous workload in the current build feature set
 (nothing is slow enough — GitHub sync is a single API call, and deployments/metrics/health are
-simulated) to justify a dedicated queue + broker. V1 uses NestJS's built-in scheduler instead.
+simulated) to justify a dedicated queue + broker. current build uses NestJS's built-in scheduler instead.
 
 ---
 
-# Technology (V1)
+# Technology (current build)
 
 `@nestjs/schedule` — in-process cron/interval jobs, no separate broker or worker process.
 
@@ -24,7 +24,7 @@ Advance simulated state (deployments, metrics, health) on a timer without blocki
 
 ---
 
-# Jobs (V1)
+# Jobs (current build)
 
 - **Deployment Progressor** — every few seconds, advance any `RUNNING`/`QUEUED` deployment one
   step, appending a log line; resolve to `SUCCESS`/`FAILED` after N ticks
@@ -35,13 +35,13 @@ Advance simulated state (deployments, metrics, health) on a timer without blocki
 
 ---
 
-# Failure Handling (V1)
+# Failure Handling (current build)
 
 If a job throws, log it and let the next tick retry — no dead-letter queue needed at this scale.
 
 ---
 
-# Post-V1
+# next phase
 
 Real BullMQ + Redis queue once there's a genuine async workload (e.g. real GitHub webhook
 processing, real build execution, email sending).
@@ -50,4 +50,5 @@ processing, real build execution, email sending).
 
 # Status
 
-Building (V1)
+Building (current build)
+

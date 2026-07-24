@@ -1,112 +1,35 @@
-import { Plus, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { Activity, ArrowUpRight, BellRing, Boxes, ChevronRight, Plus, Rocket, ShieldCheck, X } from "lucide-react";
 import type { NavState } from "../lib/types";
-import { PROJECTS, INCIDENTS, ALL_RECENT } from "../lib/mockData";
-import { PageFade, SectionCard, Btn, StatusBadge, Mono } from "../components/primitives";
+import { deploymentsApi, healthApi, incidentsApi, organizationsApi, projectsApi, type Project } from "../lib/api";
+import { useResource } from "../lib/use-resource";
+import { Btn, Mono, PageFade, StatusBadge } from "../components/primitives";
 import { TopBar } from "../components/TopBar";
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="bg-card border border-border rounded-lg p-5 hover:border-border/80 transition-colors">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold text-foreground mt-1 tabular-nums tracking-tight">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-    </div>
-  );
+const status = (value: string) => value === "SUCCESS" ? "success" : value === "FAILED" ? "failed" : value === "CANCELLED" ? "cancelled" : "in-progress" as const;
+const relative = (date: string) => new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(Math.round((new Date(date).getTime() - Date.now()) / 60000), "minute");
+
+function Empty({ children }: { children: React.ReactNode }) { return <div className="px-6 py-12 text-center text-sm text-muted-foreground">{children}</div>; }
+function Glass({ children, className = "" }: { children: React.ReactNode; className?: string }) { return <section className={`glass-panel ${className}`}>{children}</section>; }
+
+function NewProjectModal({ organizationId, onClose, onCreated }: { organizationId: string; onClose: () => void; onCreated: (project: Project) => void }) {
+  const [name, setName] = useState(""); const [branch, setBranch] = useState("main"); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
+  const create = async (event: React.FormEvent) => { event.preventDefault(); setBusy(true); try { const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); onCreated(await projectsApi.create({ organizationId, name, slug, visibility: "PRIVATE", defaultBranch: branch })); } catch (err) { setError(err instanceof Error ? err.message : "Could not create project"); } finally { setBusy(false); } };
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#030712]/70 backdrop-blur-sm"><form onSubmit={create} className="w-full max-w-md glass-panel p-6 shadow-2xl shadow-black/50"><div className="flex justify-between items-center mb-6"><div><p className="eyebrow">New workspace</p><h2 className="text-xl font-semibold mt-1">Create a project</h2></div><button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button></div><div className="space-y-4"><label className="block text-sm">Project name<input required autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Production API" className="saas-input mt-1.5" /></label><label className="block text-sm">Default branch<input required value={branch} onChange={e => setBranch(e.target.value)} className="saas-input mt-1.5" /></label>{error && <p className="text-sm text-destructive">{error}</p>}<div className="flex justify-end gap-2 pt-2"><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn type="submit" disabled={busy}><Plus className="w-4 h-4" />{busy ? "Creating…" : "Create project"}</Btn></div></div></form></div>;
 }
 
 export function DashboardPage({ onNav }: { onNav: (s: NavState) => void }) {
-  return (
-    <PageFade>
-      <TopBar title="Dashboard" />
-      <div className="p-5 max-w-6xl space-y-5">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Active projects"    value="4"      sub="4 repos monitored" />
-          <StatCard label="Deployments (7d)"   value="23"     sub="↑ 4 from last week" />
-          <StatCard label="Mean uptime"         value="99.7%"  sub="across all services" />
-          <StatCard label="Open incidents"      value="2"      sub="1 critical, 1 high" />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2">
-            <SectionCard
-              title="Projects"
-              action={<Btn variant="ghost" size="sm"><Plus className="w-3.5 h-3.5" />New project</Btn>}
-            >
-              <div className="divide-y divide-border">
-                {PROJECTS.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => onNav({ page: "project", projectId: p.id })}
-                    className="w-full px-5 py-3.5 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-medium text-foreground">{p.name}</span>
-                        <StatusBadge status={p.status} pulse={p.status === "in-progress"} />
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Mono className="text-muted-foreground">{p.repo}</Mono>
-                        <span>·</span>
-                        <span>{p.framework}</span>
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs text-muted-foreground">{p.lastDeploy}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{p.uptime} uptime</div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </SectionCard>
-          </div>
-
-          <div>
-            <SectionCard title="Incidents">
-              <div className="divide-y divide-border">
-                {INCIDENTS.map(inc => (
-                  <div key={inc.id} className="px-5 py-3.5 space-y-2">
-                    <p className="text-xs text-foreground leading-snug">{inc.title}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <StatusBadge status={inc.status} />
-                      <Mono className="text-muted-foreground">{inc.project}</Mono>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{inc.opened}</p>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          </div>
-        </div>
-
-        <SectionCard title="Recent deployments">
-          <div className="divide-y divide-border">
-            {ALL_RECENT.map(dep => (
-              <button
-                key={dep.id}
-                onClick={() => onNav({ page: "deployment", projectId: dep.project, deploymentId: dep.id })}
-                className="w-full px-5 py-3 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
-              >
-                <div className="w-24 flex-shrink-0">
-                  <StatusBadge status={dep.status} pulse={dep.status === "in-progress"} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">{dep.message}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Mono className="text-muted-foreground">{dep.commit}</Mono>
-                    <span className="text-muted-foreground text-xs">·</span>
-                    <Mono className="text-muted-foreground">{dep.project}</Mono>
-                  </div>
-                </div>
-                <div className="text-right flex-shrink-0 text-xs text-muted-foreground">
-                  <div>{dep.timestamp}</div>
-                  {dep.duration && <div className="font-mono mt-0.5">{dep.duration}</div>}
-                </div>
-              </button>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
-    </PageFade>
-  );
+  const projects = useResource(() => projectsApi.list()); const deployments = useResource(() => deploymentsApi.recent(), [], 5000); const incidents = useResource(() => incidentsApi.open(), [], 15000); const health = useResource(() => healthApi.summary()); const orgs = useResource(() => organizationsApi.list());
+  const [creating, setCreating] = useState(false);
+  const usableProjects = projects.data ?? []; const usableDeployments = deployments.data ?? [];
+  return <PageFade><TopBar title="Command center" />
+    <div className="saas-page space-y-6">
+      <div className="hero-grid relative overflow-hidden rounded-3xl px-6 py-8 md:px-8"><div className="relative z-10 max-w-2xl"><p className="eyebrow">Deployment intelligence</p><h1 className="mt-3 text-3xl md:text-4xl font-semibold tracking-tight">Build with certainty.<br/><span className="text-primary">Ship with momentum.</span></h1><p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">One calm, real-time view of every project, build, and production signal across your workspace.</p><div className="mt-6 flex gap-3"><Btn onClick={() => setCreating(true)}><Plus className="w-4 h-4" />New project</Btn><Btn variant="secondary" onClick={() => deployments.refresh()}><Activity className="w-4 h-4" />Refresh live data</Btn></div></div><div className="absolute -right-12 -top-16 h-64 w-64 rounded-full bg-primary/20 blur-3xl" /></div>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3"><Metric icon={Boxes} label="Active projects" value={projects.loading ? "—" : String(usableProjects.length)} note="Connected to your workspace"/><Metric icon={Rocket} label="Recent deployments" value={deployments.loading ? "—" : String(usableDeployments.length)} note="Latest 20 deployments"/><Metric icon={ShieldCheck} label="Measured uptime" value={health.data?.uptimePercentage == null ? "—" : `${health.data.uptimePercentage}%`} note={health.data?.totalChecks ? `${health.data.totalChecks} health checks` : "No checks recorded yet"}/><Metric icon={BellRing} label="Open incidents" value={incidents.loading ? "—" : String(incidents.data?.length ?? 0)} note="Needs your attention"/></div>
+      <div className="grid xl:grid-cols-5 gap-5"><Glass className="xl:col-span-3"><PanelTitle title="Projects" action={<button onClick={() => setCreating(true)} className="text-xs text-primary hover:text-primary/80">Create project</button>}/>{projects.error ? <Empty>{projects.error}</Empty> : !projects.loading && !usableProjects.length ? <Empty>Create your first project to start monitoring deployments.</Empty> : <div className="divide-y divide-white/[.06]">{usableProjects.map(project => <button key={project.id} onClick={() => onNav({ page: "project", projectId: project.id })} className="project-row"><div className="project-orb">{project.name.slice(0, 1).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="font-medium truncate">{project.name}</p><p className="text-xs text-muted-foreground mt-1"><Mono>{project.defaultBranch}</Mono> · {project.visibility.toLowerCase()}</p></div><div className="hidden sm:block text-right"><p className="text-xs text-muted-foreground">Production</p><p className="mt-1 text-xs text-emerald-300">Ready</p></div><ChevronRight className="w-4 h-4 text-muted-foreground" /></button>)}</div>}</Glass>
+        <Glass className="xl:col-span-2"><PanelTitle title="Incident feed" action={<span className="text-xs text-muted-foreground">{incidents.data?.length ?? 0} open</span>}/>{incidents.error ? <Empty>{incidents.error}</Empty> : !incidents.loading && !incidents.data?.length ? <Empty>Everything looks healthy. No open incidents.</Empty> : <div className="divide-y divide-white/[.06]">{incidents.data?.map(incident => <div key={incident.id} className="p-5"><div className="flex justify-between gap-3"><p className="text-sm font-medium leading-5">{incident.title}</p><span className="severity-dot" /></div><div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>{incident.project?.name ?? "Project"}</span><span>{relative(incident.openedAt)}</span></div></div>)}</div>}</Glass></div>
+      <Glass><PanelTitle title="Deployment activity" action={<button onClick={() => deployments.refresh()} className="text-xs text-muted-foreground hover:text-foreground">Updated automatically</button>}/>{deployments.error ? <Empty>{deployments.error}</Empty> : !deployments.loading && !usableDeployments.length ? <Empty>Your new deployments will appear here.</Empty> : <div className="divide-y divide-white/[.06]">{usableDeployments.map(dep => <button key={dep.id} onClick={() => onNav({ page: "deployment", projectId: dep.environment?.project?.id, deploymentId: dep.id })} className="deployment-row"><StatusBadge status={status(dep.status)} pulse={dep.status === "RUNNING" || dep.status === "QUEUED"}/><div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{dep.commitMessage}</p><p className="text-xs text-muted-foreground mt-1"><Mono>{dep.commitSha.slice(0, 7)}</Mono> · {dep.branch}</p></div><div className="text-right text-xs text-muted-foreground"><p>{relative(dep.createdAt)}</p><p className="mt-1">{dep.duration ? `${dep.duration}s` : "In progress"}</p></div><ArrowUpRight className="w-4 h-4 text-muted-foreground" /></button>)}</div>}</Glass>
+    </div>{creating && orgs.data?.[0] && <NewProjectModal organizationId={orgs.data[0].id} onClose={() => setCreating(false)} onCreated={project => { setCreating(false); void projects.refresh(); onNav({ page: "project", projectId: project.id }); }}/>}</PageFade>;
 }
+function Metric({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: string; note: string }) { return <div className="metric-card"><span className="metric-icon"><Icon className="w-4 h-4" /></span><p className="mt-5 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-sm">{label}</p><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>; }
+function PanelTitle({ title, action }: { title: string; action?: React.ReactNode }) { return <div className="flex items-center justify-between px-5 py-4 border-b border-white/[.06]"><div><p className="text-sm font-semibold">{title}</p><p className="text-[11px] text-muted-foreground mt-0.5">Workspace overview</p></div>{action}</div>; }

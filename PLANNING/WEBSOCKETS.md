@@ -1,19 +1,19 @@
 # 🔌 WEBSOCKETS.md
 
-Version: 2.0 (V1 MVP)
+Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-**No WebSockets in V1.** Real-time push isn't needed to make the product feel alive at MVP scale
+**No WebSockets in current build.** Real-time push isn't needed to make the product feel alive at MVP scale
 — polling every few seconds via TanStack Query gives a "live enough" experience for a demo, with
 far less implementation and hosting complexity (no sticky sessions/connection scaling to worry
 about).
 
 ---
 
-# V1 Substitute: Polling
+# current build Substitute: Polling
 
 ```
 Client (TanStack Query, refetchInterval) → GET /deployments/{id} (or /logs, /metrics, /notifications)
@@ -25,7 +25,7 @@ notifications every 15–30s.
 
 ---
 
-# Post-V1
+# next phase
 
 Reintroduce WebSockets (NestJS Gateway) for: live deployment logs, deployment status push,
 notification push, metric updates, health updates — once polling actually becomes a bottleneck or
@@ -35,4 +35,5 @@ the UX gap becomes worth the added complexity.
 
 # Status
 
-Deferred (Post-V1) — polling used instead in V1
+Deferred (next phase) — polling used instead in current build
+

@@ -1,38 +1,38 @@
 # 📊 MONITORING.md
 
-Version: 2.0 (V1 MVP — Simulated)
+Version: 2.0 (current build — Simulated)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-**No Prometheus/Grafana in V1.** There is no real infrastructure to monitor yet (deployments are
-simulated), so standing up a metrics stack would be monitoring nothing real. Instead, V1 
+**No Prometheus/Grafana in current build.** There is no real infrastructure to monitor yet (deployments are
+simulated), so standing up a metrics stack would be monitoring nothing real. Instead, current build 
 generates plausible metric data directly into Postgres and renders it with recharts on the
 frontend — same end-user experience (a working monitoring dashboard), no infra overhead.
 
 ---
 
-# Goal (V1)
+# Goal (current build)
 
 Give the dashboard real-looking, time-series data to display and alert on.
 
 ---
 
-# Stack (V1)
+# Stack (current build)
 
 `@nestjs/schedule` job → Postgres → `GET /environments/{id}/metrics` → recharts on the frontend.
 
 ---
 
-# Metrics (V1)
+# Metrics (current build)
 
 CPU, Memory, Latency, Error Rate (the four most visually useful for a dashboard demo — Disk/
 Network/Requests/Uptime stay in the schema's `MetricType` enum for later).
 
 ---
 
-# Simulation Approach (V1)
+# Simulation Approach (current build)
 
 - Baseline value per metric type with small random jitter each tick, to look like a real running
   service
@@ -41,21 +41,21 @@ Network/Requests/Uptime stay in the schema's `MetricType` enum for later).
 
 ---
 
-# Health Checks (V1)
+# Health Checks (current build)
 
 - If the environment has a `domain` set, actually `HTTP GET` it and record status/response time
 - Otherwise, simulate a result (mostly "up", occasionally "down") on the same cadence
 
 ---
 
-# Dashboard (V1)
+# Dashboard (current build)
 
 CPU/Memory/Latency/Error-rate charts per environment, current health status, recent deployment
 outcomes.
 
 ---
 
-# Post-V1
+# next phase
 
 Prometheus + Grafana once there's a real service to scrape, custom metrics, tracing.
 
@@ -63,4 +63,5 @@ Prometheus + Grafana once there's a real service to scrape, custom metrics, trac
 
 # Status
 
-Building (V1)
+Building (current build)
+

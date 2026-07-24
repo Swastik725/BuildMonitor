@@ -5,19 +5,12 @@ import {
   Param,
   Patch,
   Post,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { IncidentsService } from './incidents.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
-
-type AuthenticatedRequest = {
-  user: {
-    userId: string;
-    email: string;
-  };
-};
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -27,37 +20,37 @@ export class IncidentsController {
   @Post('projects/:projectId/incidents')
   create(
     @Param('projectId') projectId: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: { id: string },
     @Body() dto: CreateIncidentDto,
   ) {
     return this.incidentsService.create(
       projectId,
-      req.user.userId,
+      user.id,
       dto,
     );
   }
 
   @Get('incidents')
-  findAllOpen(@Req() req: AuthenticatedRequest) {
-    return this.incidentsService.findAllOpen(req.user.userId);
+  findAllOpen(@CurrentUser() user: { id: string }) {
+    return this.incidentsService.findAllOpen(user.id);
   }
 
   @Get('projects/:projectId/incidents')
   findAllByProject(
     @Param('projectId') projectId: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: { id: string },
   ) {
     return this.incidentsService.findAllByProject(
       projectId,
-      req.user.userId,
+      user.id,
     );
   }
 
   @Patch('incidents/:id/resolve')
   resolve(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: { id: string },
   ) {
-    return this.incidentsService.resolve(id, req.user.userId);
+    return this.incidentsService.resolve(id, user.id);
   }
 }

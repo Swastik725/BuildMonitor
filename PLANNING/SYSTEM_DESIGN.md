@@ -1,6 +1,6 @@
 # 🏗️ SYSTEM_DESIGN.md
 
-> **Document Version:** 2.0 (V1 MVP)
+> **Document Version:** 2.0 (current build)
 >
 > **Status:** Building
 >
@@ -8,17 +8,17 @@
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
 This document originally designed the full long-term system (FastAPI, Celery, Redis,
 Prometheus/Grafana, real GitHub OAuth/webhooks). That target architecture is preserved in
 `PROJECT_BIBLE.md → Future Scope`. Everything below describes what's actually being built in the
-10-day V1 sprint, on the real stack (NestJS + Prisma), with simulated infra where real infra
+build current build sprint, on the real stack (NestJS + Prisma), with simulated infra where real infra
 would take too long to stand up safely.
 
 ---
 
-# 1. What is BuildMonitor (V1)?
+# 1. What is BuildMonitor (current build)?
 
 A developer platform where a user can register, create a project, connect a GitHub repo
 (read-only), define environments, trigger deployments, and watch a simulated
@@ -28,7 +28,7 @@ deployment/monitoring pipeline produce logs, metrics, health checks, and alerts.
 
 # 2. Goals
 
-## Functional Goals (V1)
+## Functional Goals (current build)
 
 * Register / login
 * Create a project, connect a repository (manual owner/repo, no OAuth)
@@ -38,17 +38,17 @@ deployment/monitoring pipeline produce logs, metrics, health checks, and alerts.
 * View simulated metrics and health status
 * Receive alerts and in-app notifications
 
-## Engineering Goals (V1)
+## Engineering Goals (current build)
 
 * Layered NestJS architecture (controller → service → Prisma)
 * JWT authentication done correctly (access + refresh)
 * A believable, well-structured simulator standing in for real deploy/monitoring infra
-* Clean REST API, versioned (`/api/v1`)
+* Clean REST API, versioned (`/api/current build`)
 * Basic but real test coverage on the critical path
 
 ---
 
-# 3. Non-Functional Requirements (V1)
+# 3. Non-Functional Requirements (current build)
 
 ## Maintainability
 Controller/service separation. No business logic in controllers.
@@ -60,20 +60,20 @@ Simulator jobs run independently per environment; one failing job shouldn't take
 Passwords hashed (bcrypt/argon2). JWT auth. Input validation on every endpoint. No secrets in
 source.
 
-## Explicitly deferred to post-V1
+## Explicitly deferred to next phase
 Horizontal scalability, multi-region, real background job durability (BullMQ/Redis), real-time
 push (WebSockets) — see `PROJECT_BIBLE.md → Future Scope`.
 
 ---
 
-# 4. Target Users (V1)
+# 4. Target Users (current build)
 
 Individual developers and students building/reviewing a portfolio project. (Teams/orgs are
-schema-ready but not exposed in V1 UI.)
+schema-ready but not exposed in current build UI.)
 
 ---
 
-# 5. User Journey (V1)
+# 5. User Journey (current build)
 
 ```
 Register → Land in personal org → Create project → Connect repository
@@ -82,23 +82,23 @@ Register → Land in personal org → Create project → Connect repository
    → See notification in bell icon
 ```
 
-(Email verification, GitHub OAuth login, and org invites are removed from this journey for V1.)
+(Email verification, GitHub OAuth login, and org invites are removed from this journey for current build.)
 
 ---
 
-# 6. Core Modules (V1)
+# 6. Core Modules (current build)
 
 ```
 Auth → Organizations (personal, auto-created) → Projects → Repository (manual connect)
    → Environments → Deployments (simulated) → Metrics/Health (simulated) → Alerts → Notifications
 ```
 
-Removed from V1 module list: GitHub OAuth/Webhooks, Background Workers (Celery/Redis),
+Removed from current build module list: GitHub OAuth/Webhooks, Background Workers (Celery/Redis),
 Administration/Audit.
 
 ---
 
-# 7. High-Level Architecture (V1)
+# 7. High-Level Architecture (current build)
 
 ```
                      Browser
@@ -109,7 +109,7 @@ Administration/Audit.
 
                         │
 
-              HTTPS REST API (/api/v1)
+              HTTPS REST API (/api/current build)
 
                         │
 
@@ -124,12 +124,12 @@ Administration/Audit.
      @nestjs/schedule cron jobs (deployment / metrics / health simulators, alert evaluation)
 ```
 
-No Redis. No Celery. No Prometheus/Grafana. No Nginx. These return in the post-V1 roadmap once
+No Redis. No Celery. No Prometheus/Grafana. No Nginx. These return in the next phase roadmap once
 there's real infrastructure or real async load to justify them.
 
 ---
 
-# 8. Backend Architecture (V1)
+# 8. Backend Architecture (current build)
 
 ```
 Controller (validation, auth guard)
@@ -143,7 +143,7 @@ PostgreSQL
 
 ---
 
-# 9. Frontend Architecture (V1)
+# 9. Frontend Architecture (current build)
 
 ```
 Pages (Next.js App Router) → Layouts → Components → Hooks (TanStack Query, polling) → API Client → Backend
@@ -151,9 +151,9 @@ Pages (Next.js App Router) → Layouts → Components → Hooks (TanStack Query,
 
 ---
 
-# 10. "Background Processing" in V1
+# 10. "Background Processing" in current build
 
-Instead of Celery + Redis, V1 uses **in-process scheduled jobs** (`@nestjs/schedule`) inside the
+Instead of Celery + Redis, current build uses **in-process scheduled jobs** (`@nestjs/schedule`) inside the
 NestJS app itself:
 
 * Deployment simulator — advances QUEUED → RUNNING → SUCCESS/FAILED on a timer, writing log rows
@@ -166,7 +166,7 @@ decision (see ADR-013), not something to be defensive about.
 
 ---
 
-# 11–16. Flows (V1)
+# 11–16. Flows (current build)
 
 **Auth:** Login → validate credentials → issue access + refresh JWT → authenticated requests →
 refresh → logout.
@@ -178,25 +178,25 @@ generated → SUCCESS/FAILED → metrics/alerts follow → notification created.
 alert + notification created if breached → frontend polls and reflects it.
 
 **Logging:** Deployment logs are stored in Postgres and paginated over the API (no separate log
-pipeline/ELK stack in V1).
+pipeline/ELK stack in current build).
 
 **Notifications:** In-app only, created directly on the relevant event, read via
-`GET /notifications`, marked read via `PATCH /notifications/{id}/read`. No email in V1.
+`GET /notifications`, marked read via `PATCH /notifications/{id}/read`. No email in current build.
 
 ---
 
-# 17. Security Model (V1)
+# 17. Security Model (current build)
 
 * JWT access + refresh
 * Password hashing (bcrypt/argon2)
 * Every write endpoint validated (class-validator DTOs) and scoped to the requesting user's
   organization
 * Rate limiting on auth endpoints
-* No OAuth, no webhook signature verification needed in V1 (no webhooks in V1)
+* No OAuth, no webhook signature verification needed in current build (no webhooks in current build)
 
 ---
 
-# 18. Failure Scenarios (V1 relevant subset)
+# 18. Failure Scenarios (current build relevant subset)
 
 Database restart, invalid/expired JWT, GitHub API rate limit on manual sync, deployment "fails"
 (simulated), duplicate registration. See `FAILURE_SCENARIOS.md`.
@@ -209,7 +209,7 @@ Single Responsibility, Dependency Injection (native to NestJS), DRY, KISS, RESTf
 
 ---
 
-# 20. Out of Scope (V1)
+# 20. Out of Scope (current build)
 
 Microservices, Kubernetes, distributed databases, multi-region, Terraform, autoscaling,
 serverless, mobile apps, real GitHub OAuth/webhooks, Redis/Celery, Prometheus/Grafana,
@@ -217,9 +217,9 @@ WebSockets, RBAC beyond owner, team invites, audit logs, email, 2FA.
 
 ---
 
-# 21. Success Criteria (V1)
+# 21. Success Criteria (current build)
 
-* Deployed and reachable by URL within 10 days
+* Deployed and reachable by URL within builds
 * Every simulated subsystem is clearly labeled as such in the README
 * Every scope cut is documented in `ADR.md`
 * The full user journey (section 5) works end to end without manual DB intervention
@@ -229,4 +229,5 @@ WebSockets, RBAC beyond owner, team invites, audit logs, email, 2FA.
 # Next Document
 
 `DATABASE_DESIGN.md` — schema is frozen as-is (already built); see that document for what's kept
-vs. unused in V1.
+vs. unused in current build.
+

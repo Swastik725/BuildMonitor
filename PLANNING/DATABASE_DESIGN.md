@@ -1,22 +1,22 @@
 # 🗄️ DATABASE_DESIGN.md
 
-> Version: 2.0 (V1 MVP)
+> Version: 2.0 (current build)
 >
-> Status: Frozen — matches the existing `schema.prisma` as-is, no changes for V1
+> Status: Frozen — matches the existing `schema.prisma` as-is, no changes for current build
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
 This schema is being kept exactly as already built. The tables below all exist in the current
-Prisma schema. For V1, two tables are present but effectively **unused by the API**:
+Prisma schema. For current build, two tables are present but effectively **unused by the API**:
 
-* `audit_logs` — no service writes to this in V1 (post-V1 feature)
-* `organization_members.role` — always `OWNER` in V1 (every org has exactly one auto-created
+* `audit_logs` — no service writes to this in current build (next phase feature)
+* `organization_members.role` — always `OWNER` in current build (every org has exactly one auto-created
   member); `ADMIN`/`DEVELOPER`/`VIEWER` are schema-ready, not enforced until org invites ship
-  post-V1
+  next phase
 
-Everything else below is fully active in V1, including `deployments`, `deployment_logs`,
+Everything else below is fully active in current build, including `deployments`, `deployment_logs`,
 `metrics`, and `health_checks` — those are populated by the simulator jobs described in
 `BACKGROUND_WORKERS.md` and `MONITORING.md` rather than by real infrastructure, but the tables
 and their meaning are unchanged.
@@ -868,3 +868,4 @@ Never destroy history.
 * Cascade behavior is decided.
 * Soft delete strategy is finalized.
 * SQLAlchemy models can be generated directly from this document.
+

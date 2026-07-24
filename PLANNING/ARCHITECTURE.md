@@ -1,18 +1,18 @@
 # 🏛️ ARCHITECTURE.md
 
-> Version: 2.0 (V1 MVP)
+> Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-Redis, BullMQ, Prometheus, Grafana, Nginx, and WebSockets are removed from the V1 architecture.
+Redis, BullMQ, Prometheus, Grafana, Nginx, and WebSockets are removed from the current build architecture.
 They remain the intended V2+ direction (see `PROJECT_BIBLE.md → Future Scope`) but are not part
-of what ships in 10 days.
+of what ships in builds.
 
 ---
 
-# Architecture Style (V1)
+# Architecture Style (current build)
 
 - Monolithic
 - Modular (NestJS modules)
@@ -21,7 +21,7 @@ of what ships in 10 days.
 
 ---
 
-# High Level Architecture (V1)
+# High Level Architecture (current build)
 
 ```
                     Browser
@@ -73,7 +73,7 @@ Client → Controller → Service → Prisma → Database
 
 ---
 
-# Folder Structure (V1)
+# Folder Structure (current build)
 
 ```
 backend/
@@ -110,15 +110,15 @@ frontend/
 
 ---
 
-# External Services (V1)
+# External Services (current build)
 
 - GitHub REST API (read-only, manual sync)
 
-_Removed for V1: SMTP, Prometheus, Grafana._
+_Removed for current build: SMTP, Prometheus, Grafana._
 
 ---
 
-# Internal Services (V1)
+# Internal Services (current build)
 
 - Auth
 - Organizations
@@ -130,7 +130,7 @@ _Removed for V1: SMTP, Prometheus, Grafana._
 - Alerts
 - Notifications
 
-_Removed for V1: dedicated Audit service (table exists, unused)._
+_Removed for current build: dedicated Audit service (table exists, unused)._
 
 ---
 
@@ -142,7 +142,7 @@ Frontend → API → Service → Prisma → Database → Response
 
 ---
 
-# "Event Flow" (V1 substitute)
+# "Event Flow" (current build substitute)
 
 No Redis queue / Celery. Instead:
 
@@ -154,7 +154,7 @@ Cron Tick (@nestjs/schedule) → Service Logic → Database Write → Alert Eval
 
 ---
 
-# Caching (V1)
+# Caching (current build)
 
 None. TanStack Query provides client-side caching/dedup, which is sufficient at MVP scale. Redis
 is deferred (see `CACHING.md`).
@@ -167,7 +167,7 @@ Separation of Concerns, SOLID, DRY, KISS, REST, async where it matters.
 
 ---
 
-# Status — V1 Stack (Actual)
+# Status — current build Stack (Actual)
 
 Frontend
 ✅ Next.js · ✅ React · ✅ TypeScript · ✅ Tailwind CSS · ✅ shadcn/ui · ✅ TanStack Query
@@ -178,11 +178,12 @@ Backend
 
 DevOps
 ✅ GitHub Actions (lint/test/build) · ✅ Vercel (frontend) · ✅ Railway/Render (backend)
-❌ Docker Compose full stack (nice-to-have Day 10) · ❌ Prometheus/Grafana/Nginx (post-V1)
+❌ Docker Compose full stack (nice-to-have Day 10) · ❌ Prometheus/Grafana/Nginx (next phase)
 
 Authentication
 ✅ JWT (access + refresh)
-❌ GitHub OAuth (post-V1)
+❌ GitHub OAuth (next phase)
 
 Real-Time
-❌ WebSockets (post-V1) — polling via TanStack Query in V1
+❌ WebSockets (next phase) — polling via TanStack Query in current build
+

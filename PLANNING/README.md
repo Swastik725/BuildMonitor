@@ -1,49 +1,27 @@
-# 🚀 BuildMonitor
+# BuildMonitor
 
-A developer platform for tracking projects, deployments, application health, metrics, and alerts
-from a single dashboard.
+BuildMonitor is a developer operations dashboard for organizations, projects, deployments,
+incidents, and application health.
 
-**Status:** V1 MVP — 10 day build. See `PROJECT_BIBLE.md` for full scope and `ROADMAP.md` for the
-day-by-day plan.
+This planning folder describes the product as a complete system rather than a versioned sprint.
+Use it as the source of truth for the intended product shape, the implemented backend/frontend
+surface, and the remaining work that still belongs in the product.
 
-## V1 Features
+## Start here
 
-- Authentication (email/password + JWT)
-- Organizations (auto-created personal workspace)
-- Projects
-- Repository connection (GitHub, read-only, manual sync)
-- Environments
-- Deployments (simulated pipeline with live-ish status + logs)
-- Monitoring (simulated metrics + health checks)
-- Alerts (auto-generated from failures/thresholds)
-- In-app notifications
+- `PROJECT_BIBLE.md` — product vision, scope, and architecture
+- `SYSTEM_DESIGN.md` — module boundaries and flow
+- `DOMAIN_MODEL.md` — entities and relationships
+- `DATABASE_DESIGN.md` — Prisma schema and persistence model
+- `API_SPECIFICATION.md` — route-level contract
+- `ROADMAP.md` — implementation phases
+- `BuildMonitor_STATUS.md` — current implementation status
 
-> Note: the deployment pipeline and infrastructure metrics are **simulated** in V1 — there is no
-> real build/deploy execution or real server being monitored. This is called out on purpose: it's
-> the right tradeoff for a 10-day solo build, and the roadmap in `PROJECT_BIBLE.md` explains what
-> "real" would look like next.
+## Current framing
 
-## Tech Stack
+- The product is BuildMonitor, not a generic dashboard bundle.
+- The codebase uses React + Vite on the frontend and NestJS + Prisma on the backend.
+- Deployment, health, and monitoring behavior should be described honestly in the docs:
+  simulated where appropriate, real where already implemented, and clearly called out when a
+  feature is still missing.
 
-### Frontend
-- Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
-- TanStack Query (polling for live-ish updates)
-- React Hook Form + Zod
-
-### Backend
-- NestJS, TypeScript
-- Prisma + PostgreSQL
-- `@nestjs/schedule` for the deployment/metrics/health simulators
-
-### DevOps
-- GitHub Actions (lint + test + build)
-- Backend on Railway/Render, frontend on Vercel
-
-## Documentation
-
-See `/PLANNING` — start with `PROJECT_BIBLE.md`, then `ROADMAP.md`, `SYSTEM_DESIGN.md`,
-`DOMAIN_MODEL.md`, and `DATABASE_DESIGN.md`.
-
-## Status
-
-🚧 In active development — 10 day MVP sprint

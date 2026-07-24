@@ -6,65 +6,60 @@ import {
   Param,
   Patch,
   Post,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
-
-type AuthenticatedRequest = {
-  user: {
-    userId: string;
-    email: string;
-  };
-};
 
 @UseGuards(JwtAuthGuard)
 @Controller('organizations')
 export class OrganizationsController {
   constructor(
-    private organizationsService: OrganizationsService,
+    private readonly organizationsService: OrganizationsService,
   ) {}
 
   @Post()
   create(
     @Body() dto: CreateOrganizationDto,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
-    return this.organizationsService.create(dto, req.user.userId);
+    return this.organizationsService.create(dto, user.id);
   }
 
   @Get()
-  findAll(@Req() req: AuthenticatedRequest) {
-    return this.organizationsService.findAll(req.user.userId);
+  findAll(
+    @CurrentUser() user: any,
+  ) {
+    return this.organizationsService.findAll(user.id);
   }
 
   @Get(':id')
   findOne(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
-    return this.organizationsService.findOne(id, req.user.userId);
+    return this.organizationsService.findOne(id, user.id);
   }
 
   @Get(':id/members')
   findMembers(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
-    return this.organizationsService.findMembers(id, req.user.userId);
+    return this.organizationsService.findMembers(id, user.id);
   }
 
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
     @Body() dto: { name?: string; slug?: string },
   ) {
     return this.organizationsService.update(
       id,
-      req.user.userId,
+      user.id,
       dto,
     );
   }
@@ -72,15 +67,18 @@ export class OrganizationsController {
   @Delete(':id')
   remove(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
-    return this.organizationsService.delete(id, req.user.userId);
+    return this.organizationsService.delete(
+      id,
+      user.id,
+    );
   }
 
   @Post(':id/members')
   addMember(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
     @Body() dto: {
       email: string;
       role?: 'ADMIN' | 'MEMBER';
@@ -88,7 +86,7 @@ export class OrganizationsController {
   ) {
     return this.organizationsService.addMember(
       id,
-      req.user.userId,
+      user.id,
       dto.email,
       dto.role,
     );
@@ -98,12 +96,55 @@ export class OrganizationsController {
   removeMember(
     @Param('id') id: string,
     @Param('userId') memberUserId: string,
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: any,
   ) {
     return this.organizationsService.removeMember(
       id,
-      req.user.userId,
+      user.id,
       memberUserId,
+    );
+  }
+
+  @Patch(':id/members/:userId/role')
+  updateMemberRole(
+    @Param('id') id: string,
+    @Param('userId') memberUserId: string,
+    @Body() dto: {
+      role: 'OWNER' | 'ADMIN' | 'MEMBER';
+    },
+    @CurrentUser() user: any,
+  ) {
+    return this.organizationsService.updateMemberRole(
+      id,
+      user.id,
+      memberUserId,
+      dto.role,
+    );
+  }
+
+  @Post(':id/leave')
+  leaveOrganization(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.organizationsService.leaveOrganization(
+      id,
+      user.id,
+    );
+  }
+
+  @Post(':id/transfer')
+  transferOwnership(
+    @Param('id') id: string,
+    @Body() dto: {
+      newOwnerId: string;
+    },
+    @CurrentUser() user: any,
+  ) {
+    return this.organizationsService.transferOwnership(
+      id,
+      user.id,
+      dto.newOwnerId,
     );
   }
 }

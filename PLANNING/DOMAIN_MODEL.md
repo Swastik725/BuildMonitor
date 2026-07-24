@@ -1,23 +1,23 @@
 # 🧠 DOMAIN_MODEL.md
 
-> Version: 2.0 (V1 MVP)
+> Version: 2.0 (current build)
 >
 > Status: Building
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
 The domain model and schema below are **unchanged** — the Prisma schema already models this
-correctly and is being kept as-is. What changes for V1 is which parts of this model are actually
-*exercised* by the API/UI in the next 10 days:
+correctly and is being kept as-is. What changes for current build is which parts of this model are actually
+*exercised* by the API/UI in the next builds:
 
 * **Organization / Member** — every user gets exactly one auto-created "Personal" organization on
   registration, and is its only member (role `OWNER`). Multi-member orgs, invites, and role
-  enforcement beyond "do you belong to this org" are schema-ready but not built in V1.
-* **Audit Log** — the table exists but nothing writes to it in V1.
+  enforcement beyond "do you belong to this org" are schema-ready but not built in current build.
+* **Audit Log** — the table exists but nothing writes to it in current build.
 * Everything else (Project → Repository → Environment → Deployment → Logs/Metrics/Health → Alert
-  → Notification) is fully in scope for V1.
+  → Notification) is fully in scope for current build.
 
 ---
 
@@ -570,9 +570,10 @@ Any major structural change after this point should be documented with a design 
 
 ---
 
-# V1 Execution Note
+# current build Execution Note
 
-For the 10-day build, treat the hierarchy above as frozen and correct. Do not add or remove
-tables. The only thing V1 changes is *behavior* on top of it (auto-org-creation, single-member
+For the build build, treat the hierarchy above as frozen and correct. Do not add or remove
+tables. The only thing current build changes is *behavior* on top of it (auto-org-creation, single-member
 orgs, simulated deployments/metrics/health instead of real ones). See `PROJECT_BIBLE.md` for the
-full V1 feature list.
+full current build feature list.
+

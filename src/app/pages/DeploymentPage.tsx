@@ -1,132 +1,22 @@
-import { Hash, GitBranch, User, Clock, ExternalLink, Zap, Terminal } from "lucide-react";
+import { Ban, CheckCircle2, Copy, GitBranch, RotateCcw, Terminal, UserRound } from "lucide-react";
 import type { NavState } from "../lib/types";
-import { PROJECTS, DEPLOYMENTS, LOG_LINES } from "../lib/mockData";
-import { PageFade, SectionCard, Btn, StatusBadge, Mono } from "../components/primitives";
+import { deploymentsApi, type DeploymentStatus } from "../lib/api";
+import { useResource } from "../lib/use-resource";
+import { Btn, Mono, PageFade, StatusBadge } from "../components/primitives";
 import { TopBar } from "../components/TopBar";
 
-export function DeploymentPage({ projectId, deploymentId, onNav }: {
-  projectId: string; deploymentId: string; onNav: (s: NavState) => void;
-}) {
-  const project = PROJECTS.find(p => p.id === projectId) ?? PROJECTS[0];
-  const deps = DEPLOYMENTS[project.id] ?? DEPLOYMENTS["web-frontend"];
-  const dep = deps.find(d => d.id === deploymentId) ?? deps[0];
+const uiStatus = (value: DeploymentStatus) => value === "SUCCESS" ? "success" : value === "FAILED" ? "failed" : value === "CANCELLED" ? "cancelled" : "in-progress" as const;
+const time = (value: string) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
-  const logColor: Record<string, string> = {
-    info:    "text-muted-foreground",
-    success: "#5fa86e",
-    error:   "#c06060",
-    warn:    "#b88c4a",
-    muted:   "",
-  };
-
-  return (
-    <PageFade>
-      <TopBar
-        title={dep.id}
-        crumbs={[
-          { label: "Projects", nav: { page: "dashboard" } },
-          { label: project.name, nav: { page: "project", projectId } },
-        ]}
-        onCrumb={onNav}
-      />
-      <div className="p-5 max-w-5xl space-y-5">
-        <div className="bg-card border border-border rounded-lg p-5">
-          <div className="flex items-start gap-4 justify-between flex-wrap">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-3 mb-2.5">
-                <StatusBadge status={dep.status} pulse={dep.status === "in-progress"} />
-                <Mono className="text-muted-foreground">{dep.id}</Mono>
-              </div>
-              <p className="text-base font-medium text-foreground mb-3">{dep.message}</p>
-              <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Hash className="w-3.5 h-3.5" />
-                  <Mono className="text-muted-foreground">{dep.commit}</Mono>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <GitBranch className="w-3.5 h-3.5" />
-                  <Mono className="text-muted-foreground">{dep.branch}</Mono>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5" />
-                  {dep.triggeredBy}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  {dep.timestamp}{dep.duration ? ` · ${dep.duration}` : ""}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <Btn variant="secondary" size="sm"><ExternalLink className="w-3.5 h-3.5" />View commit</Btn>
-              {dep.status === "failed" && (
-                <Btn variant="primary" size="sm"><Zap className="w-3.5 h-3.5" />Redeploy</Btn>
-              )}
-            </div>
-          </div>
-
-          {dep.status !== "in-progress" && (
-            <div className="mt-5 pt-5 border-t border-border grid grid-cols-3 gap-5">
-              {[
-                { label: "Queue time",  value: "2s"        },
-                { label: "Build time",  value: dep.duration ?? "—" },
-                { label: "Deploy time", value: "8s"        },
-              ].map(s => (
-                <div key={s.label}>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-sm font-semibold text-foreground mt-0.5 font-mono">{s.value}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-sm font-medium text-foreground">Build log</h2>
-            {dep.duration && (
-              <span className="ml-auto font-mono text-xs text-muted-foreground">{dep.duration}</span>
-            )}
-          </div>
-          <div className="p-4 bg-[#0d1017] overflow-x-auto">
-            <div className="space-y-px">
-              {LOG_LINES.map((line, i) => (
-                <div
-                  key={i}
-                  className="flex gap-4 px-1 py-px rounded hover:bg-white/5 transition-colors"
-                >
-                  <span className="font-mono text-xs select-none flex-shrink-0 w-16" style={{ color: "rgba(255,255,255,0.2)" }}>
-                    {line.t}
-                  </span>
-                  <span
-                    className="font-mono text-xs leading-5 whitespace-pre"
-                    style={{
-                      color: line.level === "success" ? "#5fa86e"
-                           : line.level === "error"   ? "#c06060"
-                           : line.level === "warn"    ? "#b88c4a"
-                           : line.level === "muted"   ? "rgba(255,255,255,0.3)"
-                           : "rgba(255,255,255,0.6)",
-                    }}
-                  >
-                    {line.msg}
-                  </span>
-                </div>
-              ))}
-              {dep.status === "in-progress" && (
-                <div className="flex gap-4 px-1 py-px">
-                  <span className="font-mono text-xs select-none w-16" style={{ color: "rgba(255,255,255,0.2)" }}>
-                    {" "}
-                  </span>
-                  <span className="font-mono text-xs" style={{ color: "#5580c8" }}>
-                    <span className="animate-pulse">█</span>
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </PageFade>
-  );
+export function DeploymentPage({ projectId, deploymentId, onNav }: { projectId: string; deploymentId: string; onNav: (s: NavState) => void }) {
+  const deployment = useResource(() => deploymentsApi.get(deploymentId), [deploymentId], 3000); const logs = useResource(() => deploymentsApi.logs(deploymentId), [deploymentId], 3000); const isActive = deployment.data?.status === "RUNNING" || deployment.data?.status === "QUEUED";
+  const mutate = async (action: "retry" | "cancel") => { try { await deploymentsApi[action](deploymentId); await deployment.refresh(); await logs.refresh(); } catch { /* surface stays stable; next poll will reconcile */ } };
+  const item = deployment.data;
+  if (!item) return <PageFade><TopBar title="Deployment"/><div className="saas-page"><div className="glass-panel p-8 text-muted-foreground">{deployment.loading ? "Loading deployment…" : deployment.error || "Deployment unavailable."}</div></div></PageFade>;
+  return <PageFade><TopBar title={`Deploy · ${item.commitSha.slice(0, 7)}`} crumbs={[{ label: "Command center", nav: { page: "dashboard" } }, { label: item.environment?.project?.name || "Project", nav: { page: "project", projectId } }]} onCrumb={onNav}/><div className="saas-page space-y-5">
+    <section className="glass-panel p-6 overflow-hidden relative"><div className="flex flex-wrap justify-between gap-5 relative z-10"><div><div className="flex items-center gap-3"><StatusBadge status={uiStatus(item.status)} pulse={isActive}/><span className="text-xs text-muted-foreground">{item.status === "SUCCESS" ? "Deployment complete" : item.status === "FAILED" ? "Action required" : "Build in progress"}</span></div><h1 className="mt-5 text-xl font-semibold">{item.commitMessage}</h1><div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"><span className="flex gap-1.5 items-center"><GitBranch className="w-3.5 h-3.5"/><Mono>{item.branch}</Mono></span><span className="flex gap-1.5 items-center"><UserRound className="w-3.5 h-3.5"/>{item.triggeredBy?.fullName || "Manual deployment"}</span><span>{time(item.createdAt)}</span></div></div><div className="flex gap-2 self-start"><Btn variant="secondary" onClick={() => navigator.clipboard.writeText(item.commitSha)}><Copy className="w-3.5 h-3.5"/>Copy SHA</Btn>{item.status === "FAILED" && <Btn onClick={() => void mutate("retry")}><RotateCcw className="w-3.5 h-3.5"/>Retry</Btn>}{isActive && <Btn variant="danger" onClick={() => void mutate("cancel")}><Ban className="w-3.5 h-3.5"/>Cancel</Btn>}</div></div><div className="absolute -bottom-20 -right-14 h-48 w-48 rounded-full bg-primary/20 blur-3xl"/></section>
+    <div className="grid sm:grid-cols-3 gap-3"><Fact label="Commit" value={item.commitSha.slice(0, 7)}/><Fact label="Build duration" value={item.duration ? `${item.duration}s` : isActive ? "Running" : "—"}/><Fact label="Environment" value={item.environment?.project?.name || "Production"}/></div>
+    <section className="terminal-shell"><div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/[.08]"><span className="flex gap-1.5"><i className="terminal-light bg-red-400"/><i className="terminal-light bg-amber-300"/><i className="terminal-light bg-emerald-400"/></span><Terminal className="w-4 h-4 text-muted-foreground ml-2"/><span className="text-xs text-muted-foreground">Build log</span>{isActive && <span className="ml-auto live-dot">Streaming</span>}</div><div className="p-5 min-h-80 max-h-[540px] overflow-auto font-mono text-xs leading-6">{logs.error ? <p className="text-red-300">Unable to load logs: {logs.error}</p> : !logs.loading && !logs.data?.length ? <p className="text-slate-500">Waiting for deployment logs…</p> : logs.data?.map(log => <div key={log.id} className="flex gap-4 hover:bg-white/[.03] px-2 -mx-2 rounded"><span className="text-slate-600 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span><span className={log.logLevel === "ERROR" ? "text-red-300" : log.logLevel === "WARNING" ? "text-amber-200" : "text-slate-300"}>{log.message}</span></div>)}{isActive && <div className="text-primary animate-pulse mt-1">▋</div>}</div></section>
+  </div></PageFade>;
 }
+function Fact({ label, value }: { label: string; value: string }) { return <div className="glass-panel p-5"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 font-mono text-sm font-medium">{value}</p></div>; }

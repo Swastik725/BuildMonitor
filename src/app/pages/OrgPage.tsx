@@ -1,96 +1,14 @@
 import { useState } from "react";
-import { Settings, Plus, ChevronRight, MoreHorizontal } from "lucide-react";
+import { Building2, ChevronRight, MailPlus, UsersRound } from "lucide-react";
 import type { NavState } from "../lib/types";
-import { PROJECTS, MEMBERS } from "../lib/mockData";
-import { PageFade, SectionCard, Btn, StatusBadge, Mono, Av, cn } from "../components/primitives";
+import { organizationsApi, projectsApi } from "../lib/api";
+import { useResource } from "../lib/use-resource";
+import { Btn, Mono, PageFade } from "../components/primitives";
 import { TopBar } from "../components/TopBar";
 
 export function OrgPage({ onNav }: { onNav: (s: NavState) => void }) {
-  const [tab, setTab] = useState<"projects" | "members">("projects");
-
-  return (
-    <PageFade>
-      <TopBar title="Organization" />
-      <div className="p-5 max-w-5xl space-y-5">
-        <div className="bg-card border border-border rounded-lg p-5">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-accent flex items-center justify-center text-lg font-semibold text-accent-foreground">A</div>
-              <div>
-                <h1 className="text-base font-semibold text-foreground">Acme Corp</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">acme-corp · {MEMBERS.length} members · {PROJECTS.length} projects</p>
-              </div>
-            </div>
-            <Btn variant="secondary" size="sm"><Settings className="w-3.5 h-3.5" />Settings</Btn>
-          </div>
-        </div>
-
-        <div className="border-b border-border flex">
-          {(["projects", "members"] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={cn(
-                "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px capitalize cursor-pointer",
-                tab === t
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {tab === "projects" && (
-          <SectionCard title="All projects" action={<Btn variant="ghost" size="sm"><Plus className="w-3.5 h-3.5" />New project</Btn>}>
-            <div className="divide-y divide-border">
-              {PROJECTS.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => onNav({ page: "project", projectId: p.id })}
-                  className="w-full px-5 py-3.5 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-medium text-foreground">{p.name}</span>
-                      <StatusBadge status={p.status} pulse={p.status === "in-progress"} />
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Mono className="text-muted-foreground">{p.repo}</Mono>
-                      <span>·</span>
-                      <span>{p.framework}</span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{p.deploys} deploys</div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </button>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-
-        {tab === "members" && (
-          <SectionCard title="Members" action={<Btn variant="ghost" size="sm"><Plus className="w-3.5 h-3.5" />Invite</Btn>}>
-            <div className="divide-y divide-border">
-              {MEMBERS.map(m => (
-                <div key={m.id} className="px-5 py-3.5 flex items-center gap-4">
-                  <Av initials={m.avatar} size="md" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.email}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground border border-border px-2 py-0.5 rounded">{m.role}</span>
-                  <span className="text-xs text-muted-foreground w-14 text-right">{m.lastActive}</span>
-                  <Btn variant="ghost" size="sm" className="w-7 h-7 p-0 justify-center">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Btn>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-      </div>
-    </PageFade>
-  );
+  const orgs = useResource(() => organizationsApi.list()); const [selected, setSelected] = useState<string | null>(null); const org = orgs.data?.find(o => o.id === selected) || orgs.data?.[0]; const projects = useResource(() => projectsApi.list(org?.id), [org?.id]); const members = useResource(() => org ? organizationsApi.members(org.id) : Promise.resolve([]), [org?.id]); const [invite, setInvite] = useState(""); const [note, setNote] = useState<string | null>(null);
+  const sendInvite = async (event: React.FormEvent) => { event.preventDefault(); if (!org || !invite) return; try { await organizationsApi.invite(org.id, invite); setInvite(""); setNote("Member added to the workspace."); void members.refresh(); } catch (err) { setNote(err instanceof Error ? err.message : "Could not add member"); } };
+  if (!org) return <PageFade><TopBar title="Workspace"/><div className="saas-page"><div className="glass-panel p-8 text-muted-foreground">{orgs.loading ? "Loading workspace…" : orgs.error || "No workspace available."}</div></div></PageFade>;
+  return <PageFade><TopBar title="Workspace"/><div className="saas-page space-y-5"><section className="project-hero"><div className="relative z-10 flex items-start gap-4"><div className="project-orb text-xl w-14 h-14">{org.name.slice(0,1)}</div><div><p className="eyebrow">Organization</p><h1 className="mt-2 text-3xl font-semibold">{org.name}</h1><p className="mt-1 text-sm text-muted-foreground"><Mono>{org.slug}</Mono> · your shared delivery workspace</p></div></div>{orgs.data && orgs.data.length > 1 && <select value={org.id} onChange={e => setSelected(e.target.value)} className="saas-input w-auto relative z-10"><option value={org.id}>{org.name}</option>{orgs.data.filter(o => o.id !== org.id).map(o => <option value={o.id} key={o.id}>{o.name}</option>)}</select>}</section><div className="grid lg:grid-cols-5 gap-5"><section className="glass-panel lg:col-span-3"><div className="px-5 py-4 border-b border-white/[.06] flex justify-between"><div><h2 className="text-sm font-semibold">Projects</h2><p className="text-[11px] text-muted-foreground mt-0.5">Delivery surfaces in this workspace</p></div><Building2 className="w-4 h-4 text-primary"/></div>{projects.data?.map(project => <button key={project.id} onClick={() => onNav({ page: "project", projectId: project.id })} className="project-row"><div className="project-orb">{project.name.slice(0,1)}</div><div className="flex-1 text-left"><p className="text-sm font-medium">{project.name}</p><p className="text-xs text-muted-foreground mt-1"><Mono>{project.defaultBranch}</Mono> · {project.visibility.toLowerCase()}</p></div><ChevronRight className="w-4 h-4 text-muted-foreground"/></button>)}{!projects.loading && !projects.data?.length && <p className="p-10 text-center text-sm text-muted-foreground">No projects in this workspace yet.</p>}</section><section className="glass-panel lg:col-span-2"><div className="px-5 py-4 border-b border-white/[.06] flex items-center gap-2"><UsersRound className="w-4 h-4 text-primary"/><div><h2 className="text-sm font-semibold">Team</h2><p className="text-[11px] text-muted-foreground mt-0.5">{members.data?.length ?? 0} members</p></div></div><div className="divide-y divide-white/[.06]">{members.data?.map(member => <div className="p-4 flex items-center gap-3" key={member.id}><div className="avatar-glow">{member.user.fullName.slice(0,1)}</div><div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{member.user.fullName}</p><p className="text-xs text-muted-foreground truncate">{member.user.email}</p></div><span className="text-[10px] uppercase tracking-wider text-primary">{member.role}</span></div>)}</div><form onSubmit={sendInvite} className="p-4 border-t border-white/[.06]"><div className="flex gap-2"><input className="saas-input text-xs" value={invite} onChange={e => setInvite(e.target.value)} placeholder="teammate@company.com" type="email"/><Btn type="submit" variant="secondary"><MailPlus className="w-3.5 h-3.5"/></Btn></div>{note && <p className="text-xs text-muted-foreground mt-2">{note}</p>}</form></section></div></div></PageFade>;
 }

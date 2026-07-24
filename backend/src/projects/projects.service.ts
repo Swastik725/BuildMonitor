@@ -29,6 +29,10 @@ export class ProjectsService {
     return this.prisma.$transaction(async tx => {
       const project = await tx.project.create({
         data: dto,
+        include: {
+          environments: true,
+          repository: true,
+        },
       });
 
       await tx.environment.create({
@@ -39,7 +43,13 @@ export class ProjectsService {
         },
       });
 
-      return project;
+      return tx.project.findUnique({
+        where: { id: project.id },
+        include: {
+          environments: true,
+          repository: true,
+        },
+      });
     });
   }
 
@@ -55,6 +65,7 @@ export class ProjectsService {
       },
       include: {
         environments: true,
+        repository: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -74,6 +85,7 @@ export class ProjectsService {
       },
       include: {
         environments: true,
+        repository: true,
       },
     });
 
@@ -83,4 +95,58 @@ export class ProjectsService {
 
     return project;
   }
+  async update(id: string, dto: Partial<CreateProjectDto>, userId: string) {
+  const project = await this.prisma.project.findFirst({
+    where: {
+      id,
+      organization: {
+        members: {
+          some: { userId },
+        },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new NotFoundException('Project not found');
+  }
+
+  return this.prisma.project.update({
+    where: { id },
+    data: dto,
+  });
+}
+  async remove(id: string, userId: string) {
+  const project = await this.prisma.project.findFirst({
+    where: {
+      id,
+      organization: {
+        members: {
+          some: { userId },
+        },
+      },
+    },
+    include: {
+      repository: true,
+    },
+  });
+
+  if (!project) {
+    throw new NotFoundException('Project not found');
+  }
+
+  if (project.repository) {
+    await this.prisma.repository.delete({
+      where: { projectId: id },
+    });
+  }
+
+  await this.prisma.project.delete({
+    where: { id },
+  });
+
+  return {
+    message: 'Project deleted successfully',
+  };
+}
 }

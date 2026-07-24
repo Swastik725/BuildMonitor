@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsUUID, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, MinLength, IsUrl } from 'class-validator';
 import { Visibility } from '../../../generated/prisma/enums';
 
 export class CreateProjectDto {
@@ -22,4 +22,20 @@ export class CreateProjectDto {
 
   @IsString()
   defaultBranch!: string;
+
+  @IsOptional()
+  @IsUrl()
+  repositoryUrl?: string;
+
+  @IsOptional()
+  @IsUrl()
+  productionUrl?: string;
+
+  @IsOptional()
+  @IsUrl()
+  healthUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  branch?: string;
 }

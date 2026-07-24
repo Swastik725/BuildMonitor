@@ -1,12 +1,12 @@
 # 🔄 CI_CD.md
 
-Version: 2.0 (V1 MVP)
+Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-Docker image build + automated deploy pipeline are **post-V1**. V1 deploys manually to
+Docker image build + automated deploy pipeline are **next phase**. current build deploys manually to
 Railway/Render (backend) and Vercel (frontend) — both support "push to deploy" out of the box for
 the `main` branch, so a custom CD pipeline isn't needed yet.
 
@@ -14,11 +14,11 @@ the `main` branch, so a custom CD pipeline isn't needed yet.
 
 # Platform
 
-GitHub Actions (CI only for V1)
+GitHub Actions (CI only for current build)
 
 ---
 
-# Workflow (V1)
+# Workflow (current build)
 
 ```
 Push → Install → Lint → Run Tests → Build
@@ -26,15 +26,15 @@ Push → Install → Lint → Run Tests → Build
 
 ---
 
-# Jobs (V1)
+# Jobs (current build)
 
 Backend, Frontend
 
 ---
 
-# Branches (V1)
+# Branches (current build)
 
-`main`, `feature/*` — skip `develop`/`hotfix/*` at this scale; a 10-day solo sprint doesn't need
+`main`, `feature/*` — skip `develop`/`hotfix/*` at this scale; a build solo sprint doesn't need
 a long-lived integration branch.
 
 ---
@@ -45,7 +45,7 @@ Tests pass, lint passes.
 
 ---
 
-# Post-V1
+# next phase
 
 Docker build step, automated deploy job, preview deployments, semantic versioning.
 
@@ -53,4 +53,5 @@ Docker build step, automated deploy job, preview deployments, semantic versionin
 
 # Status
 
-Building (V1)
+Building (current build)
+

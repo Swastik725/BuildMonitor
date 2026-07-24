@@ -1,24 +1,24 @@
 # 🐳 DOCKER.md
 
-Version: 2.0 (V1 MVP)
+Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-Full Docker Compose stack (Redis, Celery, Prometheus, Grafana, Nginx) is **post-V1**. If time
+Full Docker Compose stack (Redis, Celery, Prometheus, Grafana, Nginx) is **next phase**. If time
 remains on Day 10, a single `Dockerfile` for the backend is a nice-to-have — not required, since
 Railway/Render can build directly from the repo.
 
 ---
 
-# Services (V1, optional Day 10 stretch)
+# Services (current build, optional Day 10 stretch)
 
 Backend, PostgreSQL
 
 ---
 
-# Post-V1 Services
+# next phase Services
 
 Redis, Celery, Prometheus, Grafana, Nginx — reintroduced alongside the infra they support (see
 `PROJECT_BIBLE.md → Future Scope`).
@@ -27,4 +27,5 @@ Redis, Celery, Prometheus, Grafana, Nginx — reintroduced alongside the infra t
 
 # Status
 
-Deferred (optional Day 10 stretch, not required for V1)
+Deferred (optional Day 10 stretch, not required for current build)
+

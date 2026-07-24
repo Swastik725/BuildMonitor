@@ -1,10 +1,10 @@
 # 📐 CODING_STANDARDS.md
 
-Version: 2.0 (V1 MVP)
+Version: 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
 Corrected to match the actual stack (NestJS/TypeScript, not Python/FastAPI as the original draft
 assumed).
@@ -51,4 +51,5 @@ critical path (auth, deployment trigger).
 
 # Status
 
-Building (V1)
+Building (current build)
+

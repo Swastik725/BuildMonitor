@@ -1,25 +1,25 @@
 # 📡 API_SPECIFICATION.md
 
-Version 2.0 (V1 MVP)
+Version 2.0 (current build)
 
 ---
 
-# ⚠️ V1 Scope Notice
+# ⚠️ current build Scope Notice
 
-Endpoints below are grouped into **V1** (build these) and **Post-V1** (documented for
-completeness, not built in the 10-day sprint).
+Endpoints below are grouped into **current build** (build these) and **next phase** (documented for
+completeness, not built in the build sprint).
 
 ---
 
 # API Version
 
 ```
-/api/v1
+/api/current build
 ```
 
 ---
 
-# V1 Endpoints
+# current build Endpoints
 
 ## Authentication
 ```
@@ -47,10 +47,10 @@ DELETE /projects/{id}
 
 ## Repository
 ```
-POST   /repositories/connect     { owner, name }
-GET    /repositories/{id}
-POST   /repositories/{id}/sync   (manual pull of latest commit/branch via GitHub REST API)
-DELETE /repositories/{id}
+GET    /projects/{projectId}/repository
+POST   /projects/{projectId}/repository/connect   { repository }
+POST   /projects/{projectId}/repository/sync
+DELETE /projects/{projectId}/repository
 ```
 
 ## Environments
@@ -67,7 +67,7 @@ POST /deployments                { environmentId, branch, commitSha?, commitMess
 GET  /deployments?environmentId=
 GET  /deployments/{id}
 ```
-(No manual PATCH/DELETE in V1 — status changes only through the simulator.)
+(No manual PATCH/DELETE in current build — status changes only through the simulator.)
 
 ## Deployment Logs
 ```
@@ -103,7 +103,7 @@ GET /dashboard      (aggregated counts, recent deployments, recent alerts)
 
 ---
 
-# Post-V1 Endpoints (documented, not built)
+# next phase Endpoints (documented, not built)
 
 ```
 POST /auth/forgot-password
@@ -148,4 +148,5 @@ GET  /search
 
 # Status
 
-Building (V1)
+Building (current build)
+

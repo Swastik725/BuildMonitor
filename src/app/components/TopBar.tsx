@@ -1,14 +1,32 @@
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Moon, Sun } from "lucide-react";
+import { useState } from "react";
 import type { NavState } from "../lib/types";
 import { Av } from "./primitives";
+import { usersApi } from "../lib/api";
+import { useResource } from "../lib/use-resource";
 
 export function TopBar({ title, crumbs, onCrumb }: {
   title: string;
   crumbs?: Array<{ label: string; nav: NavState }>;
   onCrumb?: (nav: NavState) => void;
 }) {
+  const user = useResource(() => usersApi.profile());
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const initials =
+    user.data?.fullName
+      ?.split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join("") || user.data?.username?.slice(0, 2).toUpperCase() || "?";
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  };
   return (
-    <header className="h-12 border-b border-border flex items-center px-5 gap-3 flex-shrink-0 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+    <header className="h-16 border-b border-border flex items-center px-5 md:px-7 gap-3 flex-shrink-0 bg-background/80 backdrop-blur-xl sticky top-0 z-10">
       {crumbs?.length ? (
         <div className="flex items-center gap-1 text-sm min-w-0">
           {crumbs.map((c, i) => (
@@ -30,14 +48,10 @@ export function TopBar({ title, crumbs, onCrumb }: {
       )}
 
       <div className="ml-auto flex items-center gap-2">
-        <div className="relative hidden sm:block">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            placeholder="Search..."
-            className="pl-8 pr-3 py-1.5 text-xs bg-secondary border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring w-44 transition-all"
-          />
-        </div>
-        <Av initials="AC" />
+        <button onClick={toggleTheme} aria-label="Toggle color theme" className="h-8 w-8 rounded-lg border border-border bg-secondary/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+          {isDark ? <Sun className="w-3.5 h-3.5"/> : <Moon className="w-3.5 h-3.5"/>}
+        </button>
+        <Av initials={initials} />
       </div>
     </header>
   );

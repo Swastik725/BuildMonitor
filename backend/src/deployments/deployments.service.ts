@@ -120,6 +120,30 @@ export class DeploymentsService {
 
     return deployment;
   }
+  async retry(id: string, userId: string) {
+    const deployment = await this.findOne(id, userId);
+
+    return this.prisma.deployment.update({
+      where: { id },
+      data: {
+        status: 'QUEUED',
+        startedAt: null,
+        finishedAt: null,
+        duration: null,
+      },
+    });
+  }
+  async cancel(id: string, userId: string) {
+    await this.findOne(id, userId);
+
+    return this.prisma.deployment.update({
+      where: { id },
+      data: {
+        status: 'CANCELLED',
+        finishedAt: new Date(),
+      },
+    });
+  }
 
   async findLogs(deploymentId: string, userId: string) {
     const logs = await this.prisma.deploymentLog.findMany({

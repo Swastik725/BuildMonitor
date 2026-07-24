@@ -5,10 +5,19 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { GithubStrategy } from './github.strategy';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [
+    PrismaModule,
+    JwtModule.register({}),
+  ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    GithubStrategy,
+  ],
 })
 export class AuthModule {}
