@@ -3,7 +3,7 @@
 Last updated: July 24, 2026
 
 BuildMonitor is a developer operations dashboard for organizations, projects, deployments,
-incidents, and application health.
+incidents, metrics, and application health.
 
 ## Implemented
 
@@ -15,6 +15,8 @@ incidents, and application health.
 - project CRUD
 - automatic production environment creation
 - repository connection and manual sync
+- environment metrics collection and visualization support
+- in-app notifications with read/unread flow
 - deployment trigger, retry, cancel, and list endpoints
 - deployment log storage and retrieval
 - incidents list and resolution
@@ -27,6 +29,8 @@ incidents, and application health.
 - OAuth redirect handling
 - workspace shell and navigation
 - dashboard with real API data
+- project metrics charts backed by stored metric rows
+- notification inbox and unread badge
 - project and deployment detail views
 - organization view
 - settings view
@@ -34,15 +38,11 @@ incidents, and application health.
 
 ## Partially implemented
 
-- metrics capture and charts
-- alerts and notification surfaces
-- any additional UI that depends on those missing backend pieces
+- alerts and any additional UI that depends on those missing backend pieces
 
 ## Remaining product work
 
-- finish the repository workflow
-- finish metrics and alerting
-- add in-app notifications
+- alert generation and resolution
 - production deployment hardening
 - final QA pass across the complete product surface
 
@@ -51,4 +51,3 @@ incidents, and application health.
 - The old `mockData.ts` fixture file has been removed.
 - OAuth callbacks now use configured frontend URLs.
 - CORS is driven by environment configuration instead of a hardcoded localhost origin.
-

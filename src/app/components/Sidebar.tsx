@@ -1,4 +1,4 @@
-import { Activity, Bell, LogOut } from "lucide-react";
+import { Activity, LogOut } from "lucide-react";
 import type { Page } from "../lib/types";
 import { cn, NAV } from "./primitives";
 
@@ -7,11 +7,13 @@ export function Sidebar({
   onNav,
   onLogout,
   organizationName,
+  notificationCount = 0,
 }: {
   current: Page;
   onNav: (p: Page) => void;
   onLogout: () => void;
   organizationName?: string | null;
+  notificationCount?: number;
 }) {
   const workspaceName = organizationName?.trim() || "Workspace";
   const organizationInitial = workspaceName.slice(0, 1).toUpperCase();
@@ -46,20 +48,20 @@ export function Sidebar({
                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                   : "text-muted-foreground hover:text-sidebar-foreground hover:bg-secondary/40"
               )}
-            >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {item.label}
-            </button>
+              >
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                {item.label}
+                {item.id === "notifications" && notificationCount > 0 && (
+                  <span className="ml-auto bg-primary text-primary-foreground text-[10px] rounded-full min-w-5 px-1.5 py-px leading-none text-center">
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </span>
+                )}
+              </button>
           );
         })}
       </nav>
 
       <div className="px-3 py-4 border-t border-border space-y-1">
-        <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-sidebar-foreground hover:bg-secondary/40 transition-colors">
-          <Bell className="w-4 h-4" />
-          Notifications
-          <span className="ml-auto bg-primary text-primary-foreground text-[10px] rounded-full min-w-5 px-1.5 py-px leading-none text-center">2</span>
-        </button>
         <button
           onClick={onLogout}
           className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-sidebar-foreground hover:bg-secondary/40 transition-colors"

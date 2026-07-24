@@ -1,7 +1,7 @@
 # BuildMonitor
 
 BuildMonitor is a developer operations dashboard for tracking organizations, projects,
-deployments, incidents, and application health from one place.
+deployments, incidents, metrics, and application health from one place.
 
 The application is split into:
 
@@ -17,6 +17,8 @@ What works today:
 - organizations and members
 - projects and default production environments
 - repository connection and manual sync
+- metrics collection and charts
+- in-app notifications
 - deployments with live status, retry/cancel, and log history
 - incidents
 - user settings and linked auth providers
@@ -24,9 +26,7 @@ What works today:
 
 What is still part of the product direction:
 
-- metrics collection and charts
 - alert generation and resolution
-- in-app notifications
 - real-time push updates if they become justified later
 
 ## Running locally

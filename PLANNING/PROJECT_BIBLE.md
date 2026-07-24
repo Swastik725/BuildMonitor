@@ -65,9 +65,7 @@ the backend, frontend, and data-modeling decisions behind that kind of system.
 
 ## Still to finish
 
-- Metrics collection and charts
 - Alert generation and resolution
-- In-app notifications
 - Any remaining product polish needed for a clean ship
 
 ## Architecture summary

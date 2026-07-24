@@ -1,54 +1,51 @@
-# 📊 MONITORING.md
+# MONITORING.md
 
-Version: 2.0 (current build — Simulated)
-
----
-
-# ⚠️ current build Scope Notice
-
-**No Prometheus/Grafana in current build.** There is no real infrastructure to monitor yet (deployments are
-simulated), so standing up a metrics stack would be monitoring nothing real. Instead, current build 
-generates plausible metric data directly into Postgres and renders it with recharts on the
-frontend — same end-user experience (a working monitoring dashboard), no infra overhead.
+Version: 2.0
 
 ---
 
-# Goal (current build)
+# Scope Notice
+
+There is no Prometheus/Grafana stack in the current build. Deployments are simulated, so the
+monitoring system stores generated metric rows in Postgres and renders them with recharts on the
+frontend.
+
+---
+
+# Goal
 
 Give the dashboard real-looking, time-series data to display and alert on.
 
 ---
 
-# Stack (current build)
+# Stack
 
-`@nestjs/schedule` job → Postgres → `GET /environments/{id}/metrics` → recharts on the frontend.
-
----
-
-# Metrics (current build)
-
-CPU, Memory, Latency, Error Rate (the four most visually useful for a dashboard demo — Disk/
-Network/Requests/Uptime stay in the schema's `MetricType` enum for later).
+`@nestjs/schedule` job -> Postgres -> `GET /environments/{id}/metrics` -> recharts on the frontend.
 
 ---
 
-# Simulation Approach (current build)
+# Metrics
 
-- Baseline value per metric type with small random jitter each tick, to look like a real running
-  service
-- Occasionally (small probability per tick) inject a spike — this is what the Alert threshold
-  logic reacts to, so alerts don't sit empty in the demo
+CPU, Memory, Latency, Error Rate are the primary dashboard charts. Disk, Network, and Requests are
+also persisted so the schema supports broader monitoring later.
 
 ---
 
-# Health Checks (current build)
+# Simulation Approach
 
-- If the environment has a `domain` set, actually `HTTP GET` it and record status/response time
-- Otherwise, simulate a result (mostly "up", occasionally "down") on the same cadence
+- Baseline value per metric type with small random jitter each tick
+- Occasional spikes to make the charts and future alert thresholds meaningful
 
 ---
 
-# Dashboard (current build)
+# Health Checks
+
+- If the environment has a `domain` set, actually HTTP GET it and record status/response time
+- Otherwise, simulate a result on the same cadence
+
+---
+
+# Dashboard
 
 CPU/Memory/Latency/Error-rate charts per environment, current health status, recent deployment
 outcomes.
@@ -57,11 +54,10 @@ outcomes.
 
 # next phase
 
-Prometheus + Grafana once there's a real service to scrape, custom metrics, tracing.
+Prometheus + Grafana once there is a real service to scrape, plus custom metrics and tracing.
 
 ---
 
 # Status
 
-Building (current build)
-
+Implemented for the current build; Prometheus/Grafana remain a future phase.

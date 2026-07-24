@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import * as crypto from 'crypto';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TriggerDeploymentDto } from './dto/trigger-deployment.dto';
 
@@ -8,7 +9,10 @@ import { TriggerDeploymentDto } from './dto/trigger-deployment.dto';
 export class DeploymentsService {
   private readonly logger = new Logger(DeploymentsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async trigger(
     projectId: string,
@@ -24,6 +28,15 @@ export class DeploymentsService {
             members: {
               some: { userId },
             },
+          },
+        },
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            organizationId: true,
           },
         },
       },
@@ -52,6 +65,15 @@ export class DeploymentsService {
       deployment.id,
       'INFO',
       `Deployment queued for ${deployment.branch}@${commitSha.slice(0, 7)}`,
+    );
+
+    await this.notificationsService.createForOrganization(
+      environment.project.organizationId,
+      {
+        title: 'Deployment queued',
+        message: `${environment.project.name} is deploying ${deployment.branch}@${commitSha.slice(0, 7)}.`,
+        type: 'DEPLOYMENT',
+      },
     );
 
     return deployment;
@@ -226,6 +248,19 @@ export class DeploymentsService {
           lte: new Date(now.getTime() - 2000),
         },
       },
+      include: {
+        environment: {
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true,
+                organizationId: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     for (const deployment of queued) {
@@ -255,6 +290,15 @@ export class DeploymentsService {
         'Running build...',
         new Date(now.getTime() + 800),
       );
+
+      await this.notificationsService.createForOrganization(
+        deployment.environment.project.organizationId,
+        {
+          title: 'Deployment started',
+          message: `${deployment.environment.project.name} is now running.`,
+          type: 'DEPLOYMENT',
+        },
+      );
     }
 
     const running = await this.prisma.deployment.findMany({
@@ -262,6 +306,19 @@ export class DeploymentsService {
         status: 'RUNNING',
         startedAt: {
           lte: new Date(now.getTime() - 8000),
+        },
+      },
+      include: {
+        environment: {
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true,
+                organizationId: true,
+              },
+            },
+          },
         },
       },
     });
@@ -314,6 +371,17 @@ export class DeploymentsService {
 
       this.logger.log(
         `Deployment ${deployment.id} -> ${succeeded ? 'SUCCESS' : 'FAILED'}`,
+      );
+
+      await this.notificationsService.createForOrganization(
+        deployment.environment.project.organizationId,
+        {
+          title: succeeded ? 'Deployment succeeded' : 'Deployment failed',
+          message: succeeded
+            ? `${deployment.environment.project.name} finished successfully.`
+            : `${deployment.environment.project.name} failed and will need attention.`,
+          type: 'DEPLOYMENT',
+        },
       );
     }
   }

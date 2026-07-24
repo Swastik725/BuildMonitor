@@ -1,28 +1,26 @@
-# 📡 API_SPECIFICATION.md
+# API_SPECIFICATION.md
 
-Version 2.0 (current build)
-
----
-
-# ⚠️ current build Scope Notice
-
-Endpoints below are grouped into **current build** (build these) and **next phase** (documented for
-completeness, not built in the build sprint).
+Version 2.0
 
 ---
 
-# API Version
+# Scope
 
-```
-/api/current build
-```
+The endpoints below are the current build surface.
 
 ---
 
-# current build Endpoints
+# API Prefix
+
+`/api`
+
+---
+
+# Current Build Endpoints
 
 ## Authentication
-```
+
+```text
 POST /auth/register
 POST /auth/login
 POST /auth/logout
@@ -31,13 +29,15 @@ GET  /auth/me
 ```
 
 ## Organizations
-```
-GET   /organizations/me       (the auto-created personal org)
+
+```text
+GET   /organizations/me
 PATCH /organizations/{id}
 ```
 
 ## Projects
-```
+
+```text
 GET    /projects
 GET    /projects/{id}
 POST   /projects
@@ -46,7 +46,8 @@ DELETE /projects/{id}
 ```
 
 ## Repository
-```
+
+```text
 GET    /projects/{projectId}/repository
 POST   /projects/{projectId}/repository/connect   { repository }
 POST   /projects/{projectId}/repository/sync
@@ -54,7 +55,8 @@ DELETE /projects/{projectId}/repository
 ```
 
 ## Environments
-```
+
+```text
 GET    /environments?projectId=
 POST   /environments
 PATCH  /environments/{id}
@@ -62,50 +64,59 @@ DELETE /environments/{id}
 ```
 
 ## Deployments
-```
+
+```text
 POST /deployments                { environmentId, branch, commitSha?, commitMessage? }
 GET  /deployments?environmentId=
 GET  /deployments/{id}
 ```
-(No manual PATCH/DELETE in current build — status changes only through the simulator.)
 
 ## Deployment Logs
-```
+
+```text
 GET /deployments/{id}/logs
 ```
 
 ## Metrics
-```
+
+```text
 GET /environments/{id}/metrics?type=&from=&to=
 ```
 
+The metrics endpoint is backed by persisted metric rows attached to deployments and is used by the
+project page charts.
+
 ## Health
-```
+
+```text
 GET /environments/{id}/health
 ```
 
 ## Alerts
-```
+
+```text
 GET   /alerts?resolved=
 PATCH /alerts/{id}/resolve
 ```
 
 ## Notifications
-```
+
+```text
 GET   /notifications
 PATCH /notifications/{id}/read
 ```
 
 ## Dashboard
-```
-GET /dashboard      (aggregated counts, recent deployments, recent alerts)
+
+```text
+GET /dashboard
 ```
 
 ---
 
-# next phase Endpoints (documented, not built)
+# Next Phase Endpoints
 
-```
+```text
 POST /auth/forgot-password
 POST /auth/reset-password
 GET  /github/oauth
@@ -121,32 +132,6 @@ GET  /search
 
 ---
 
-# Error Response
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "",
-    "message": ""
-  }
-}
-```
-
----
-
-# Success Response
-
-```json
-{
-  "success": true,
-  "data": {}
-}
-```
-
----
-
 # Status
 
-Building (current build)
-
+Implemented for the current build.

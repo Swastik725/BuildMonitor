@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
   ArrowUpRight,
   ChevronRight,
@@ -9,12 +9,24 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type { NavState } from "../lib/types";
 import {
   deploymentsApi,
+  metricsApi,
   projectsApi,
   repositoriesApi,
   type DeploymentStatus,
+  type Metric,
+  type MetricType,
 } from "../lib/api";
 import { useResource } from "../lib/use-resource";
 import { Btn, Mono, PageFade, StatusBadge } from "../components/primitives";
@@ -37,6 +49,78 @@ const date = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
+const metricOrder: MetricType[] = [
+  "CPU",
+  "MEMORY",
+  "LATENCY",
+  "ERROR_RATE",
+];
+
+const metricMeta: Record<
+  MetricType,
+  { label: string; unit: string; stroke: string; fill: string }
+> = {
+  CPU: {
+    label: "CPU usage",
+    unit: "%",
+    stroke: "#60a5fa",
+    fill: "rgba(96, 165, 250, 0.18)",
+  },
+  MEMORY: {
+    label: "Memory usage",
+    unit: "%",
+    stroke: "#a78bfa",
+    fill: "rgba(167, 139, 250, 0.18)",
+  },
+  LATENCY: {
+    label: "Latency",
+    unit: "ms",
+    stroke: "#34d399",
+    fill: "rgba(52, 211, 153, 0.16)",
+  },
+  NETWORK: {
+    label: "Network",
+    unit: "mbps",
+    stroke: "#f59e0b",
+    fill: "rgba(245, 158, 11, 0.16)",
+  },
+  DISK: {
+    label: "Disk usage",
+    unit: "%",
+    stroke: "#f472b6",
+    fill: "rgba(244, 114, 182, 0.16)",
+  },
+  REQUESTS: {
+    label: "Requests",
+    unit: "/m",
+    stroke: "#22c55e",
+    fill: "rgba(34, 197, 94, 0.16)",
+  },
+  ERROR_RATE: {
+    label: "Error rate",
+    unit: "%",
+    stroke: "#fb7185",
+    fill: "rgba(251, 113, 133, 0.18)",
+  },
+};
+
+function latestValue(metrics: Metric[]) {
+  return metrics.length ? metrics[metrics.length - 1].value : null;
+}
+
+function formatMetricValue(metricType: MetricType, value: number) {
+  if (metricType === "LATENCY") {
+    return `${Math.round(value)} ms`;
+  }
+  if (metricType === "REQUESTS") {
+    return `${Math.round(value)} req/m`;
+  }
+  if (metricType === "NETWORK") {
+    return `${Math.round(value)} mbps`;
+  }
+  return `${value.toFixed(1)}%`;
+}
+
 export function ProjectPage({
   projectId,
   onNav,
@@ -49,6 +133,23 @@ export function ProjectPage({
     () => deploymentsApi.list(projectId),
     [projectId],
     4000,
+  );
+
+  const productionEnvironment = useMemo(
+    () =>
+      project.data?.environments?.find(
+        environment => environment.environmentType === "PRODUCTION",
+      ) ?? null,
+    [project.data],
+  );
+
+  const metrics = useResource(
+    () =>
+      productionEnvironment
+        ? metricsApi.list(productionEnvironment.id)
+        : Promise.resolve([] as Metric[]),
+    [productionEnvironment?.id],
+    5000,
   );
 
   const [deploying, setDeploying] = useState(false);
@@ -75,7 +176,7 @@ export function ProjectPage({
     }
   };
 
-  const connectRepository = async (event: React.FormEvent) => {
+  const connectRepository = async (event: FormEvent) => {
     event.preventDefault();
     setRepoBusy(true);
     setRepoError(null);
@@ -100,7 +201,9 @@ export function ProjectPage({
       await repositoriesApi.sync(projectId);
       void project.refresh();
     } catch (err) {
-      setRepoError(err instanceof Error ? err.message : "Could not sync repository");
+      setRepoError(
+        err instanceof Error ? err.message : "Could not sync repository",
+      );
     } finally {
       setRepoBusy(false);
     }
@@ -153,8 +256,17 @@ export function ProjectPage({
 
   const item = project.data;
   const active = deployments.data?.find(
-    d => d.status === "RUNNING" || d.status === "QUEUED",
+    deployment => deployment.status === "RUNNING" || deployment.status === "QUEUED",
   );
+  const metricsByType = new Map<MetricType, Metric[]>(
+    metricOrder.map(type => [type, []]),
+  );
+  for (const metric of metrics.data ?? []) {
+    const bucket = metricsByType.get(metric.metricType);
+    if (bucket) {
+      bucket.push(metric);
+    }
+  }
 
   return (
     <PageFade>
@@ -172,9 +284,7 @@ export function ProjectPage({
                 {item.visibility.toLowerCase()} project
               </span>
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight">
-              {item.name}
-            </h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight">{item.name}</h1>
             <p className="mt-2 text-sm max-w-xl text-muted-foreground">
               {item.description ||
                 "Deployment controls, build history, and production health in one focused view."}
@@ -200,7 +310,10 @@ export function ProjectPage({
           <div className="relative z-10 flex flex-wrap items-start gap-2">
             <Btn
               variant="secondary"
-              onClick={() => item.repository?.htmlUrl && window.open(item.repository.htmlUrl, "_blank")}
+              onClick={() =>
+                item.repository?.htmlUrl &&
+                window.open(item.repository.htmlUrl, "_blank", "noreferrer")
+              }
               disabled={!item.repository?.htmlUrl}
             >
               Repository
@@ -228,10 +341,7 @@ export function ProjectPage({
         <div className="grid md:grid-cols-3 gap-3">
           <Signal
             label="Production environment"
-            value={
-              item.environments?.find(e => e.environmentType === "PRODUCTION")?.name ||
-              "Production"
-            }
+            value={productionEnvironment?.name || "Production"}
             icon={Globe2}
           />
           <Signal
@@ -245,6 +355,116 @@ export function ProjectPage({
             icon={ShieldCheck}
           />
         </div>
+
+        <section className="glass-panel">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[.06]">
+            <div>
+              <h2 className="text-sm font-semibold">Metrics</h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Time-series metrics for the production environment
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {productionEnvironment ? "Live data" : "No production environment"}
+            </span>
+          </div>
+          {!productionEnvironment ? (
+            <div className="p-6 text-sm text-muted-foreground">
+              Create the production environment to start recording metrics.
+            </div>
+          ) : metrics.error ? (
+            <div className="p-6 text-sm text-destructive">{metrics.error}</div>
+          ) : (
+            <div className="grid gap-3 p-5 xl:grid-cols-2">
+              {metricOrder.map(metricType => {
+                const series = metricsByType.get(metricType) ?? [];
+                const latest = latestValue(series);
+                const meta = metricMeta[metricType];
+                const chartData = series.map(metric => ({
+                  time: new Date(metric.recordedAt).getTime(),
+                  value: metric.value,
+                }));
+
+                return (
+                  <div
+                    key={metricType}
+                    className="glass-panel border-white/[.06] bg-background/30 p-4"
+                  >
+                    <div className="flex items-baseline justify-between gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{meta.label}</p>
+                        <p className="mt-2 text-2xl font-semibold tracking-tight">
+                          {latest == null
+                            ? "—"
+                            : formatMetricValue(metricType, latest)}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {series.length ? `${series.length} points` : "Waiting for data"}
+                      </p>
+                    </div>
+                    <div className="mt-4 h-40">
+                      {chartData.length ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={chartData}>
+                            <defs>
+                              <linearGradient
+                                id={`metric-gradient-${metricType}`}
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop offset="5%" stopColor={meta.stroke} stopOpacity={0.35} />
+                                <stop offset="95%" stopColor={meta.stroke} stopOpacity={0.02} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                            <XAxis
+                              dataKey="time"
+                              hide
+                              tickFormatter={value =>
+                                new Intl.DateTimeFormat("en", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }).format(new Date(Number(value)))
+                              }
+                            />
+                            <YAxis hide domain={["dataMin - 5", "dataMax + 5"]} />
+                            <Tooltip
+                              labelFormatter={value =>
+                                new Intl.DateTimeFormat("en", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                }).format(new Date(Number(value)))
+                              }
+                              formatter={value => [
+                                formatMetricValue(metricType, Number(value)),
+                                meta.label,
+                              ]}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="value"
+                              stroke={meta.stroke}
+                              fill={`url(#metric-gradient-${metricType})`}
+                              strokeWidth={2}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                          Metrics will appear once a deployment starts.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section className="glass-panel">
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/[.06]">
@@ -285,7 +505,10 @@ export function ProjectPage({
                 label="Source"
                 value={`${item.repository.githubOwner}/${item.repository.repositoryName}`}
               />
-              <RepoStat label="Default branch" value={item.repository.defaultBranch} />
+              <RepoStat
+                label="Default branch"
+                value={item.repository.defaultBranch}
+              />
               <RepoStat
                 label="Last sync"
                 value={item.repository.lastSync ? date(item.repository.lastSync) : "Never"}
@@ -399,7 +622,7 @@ function ConnectRepoModal({
 }: {
   busy: boolean;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: FormEvent) => void;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -414,7 +637,11 @@ function ConnectRepoModal({
             <p className="eyebrow">Repository</p>
             <h2 className="text-xl font-semibold mt-1">Connect GitHub repo</h2>
           </div>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -431,8 +658,8 @@ function ConnectRepoModal({
             />
           </label>
           <p className="text-xs text-muted-foreground">
-            Public repos work immediately. Private repos require a configured `GITHUB_TOKEN`
-            on the backend.
+            Public repos work immediately. Private repos require a configured
+            `GITHUB_TOKEN` on the backend.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="ghost" onClick={onClose}>

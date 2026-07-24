@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 
 @Injectable()
 export class IncidentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private async ensureProjectAccess(projectId: string, userId: string) {
     const project = await this.prisma.project.findFirst({
@@ -16,12 +20,18 @@ export class IncidentsService {
           },
         },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        name: true,
+        organizationId: true,
+      },
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
     }
+
+    return project;
   }
 
   async create(
@@ -29,14 +39,25 @@ export class IncidentsService {
     userId: string,
     dto: CreateIncidentDto,
   ) {
-    await this.ensureProjectAccess(projectId, userId);
+    const project = await this.ensureProjectAccess(projectId, userId);
 
-    return this.prisma.incident.create({
+    const incident = await this.prisma.incident.create({
       data: {
         projectId,
         title: dto.title,
       },
     });
+
+    await this.notificationsService.createForOrganization(
+      project.organizationId,
+      {
+        title: 'Incident opened',
+        message: `${project.name}: ${dto.title}`,
+        type: 'INCIDENT',
+      },
+    );
+
+    return incident;
   }
 
   findAllOpen(userId: string) {
@@ -92,6 +113,14 @@ export class IncidentsService {
       },
       select: {
         id: true,
+        title: true,
+        project: {
+          select: {
+            id: true,
+            name: true,
+            organizationId: true,
+          },
+        },
       },
     });
 
@@ -99,12 +128,23 @@ export class IncidentsService {
       throw new NotFoundException('Incident not found');
     }
 
-    return this.prisma.incident.update({
+    const resolved = await this.prisma.incident.update({
       where: { id },
       data: {
         status: 'RESOLVED',
         resolvedAt: new Date(),
       },
     });
+
+    await this.notificationsService.createForOrganization(
+      incident.project.organizationId,
+      {
+        title: 'Incident resolved',
+        message: `${incident.project.name}: ${incident.title}`,
+        type: 'INCIDENT',
+      },
+    );
+
+    return resolved;
   }
 }

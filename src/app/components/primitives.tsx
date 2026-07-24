@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { LayoutDashboard, Package, Building2, Settings } from "lucide-react";
+import { Bell, LayoutDashboard, Package, Building2, Settings } from "lucide-react";
 import type { Status } from "../lib/types";
 import { STATUS } from "../lib/types";
 
@@ -134,6 +134,7 @@ export function PageFade({ children }: { children: React.ReactNode }) {
 export const NAV = [
   { id: "dashboard", label: "Dashboard",    icon: LayoutDashboard },
   { id: "project",   label: "Projects",     icon: Package         },
+  { id: "notifications", label: "Notifications", icon: Bell },
   { id: "org",       label: "Organization", icon: Building2       },
   { id: "settings",  label: "Settings",     icon: Settings        },
 ] as const;

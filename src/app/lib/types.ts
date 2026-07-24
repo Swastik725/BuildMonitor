@@ -1,4 +1,4 @@
-export type Page = "login" | "dashboard" | "project" | "deployment" | "org" | "settings";
+export type Page = "login" | "dashboard" | "project" | "deployment" | "notifications" | "org" | "settings";
 export interface NavState { page: Page; projectId?: string; deploymentId?: string; }
 export type Status = "success" | "failed" | "in-progress" | "cancelled" | "warning" | "healthy" | "degraded" | "down" | "open" | "resolved";
 

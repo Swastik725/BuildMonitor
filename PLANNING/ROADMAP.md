@@ -1,6 +1,6 @@
-# BuildMonitor — Roadmap
+# BuildMonitor Roadmap
 
-This roadmap is organized by implementation phases rather than by a sprint label.
+This roadmap tracks what still remains after the current build work.
 
 ## Phase 1 — Foundation
 
@@ -22,10 +22,10 @@ This roadmap is organized by implementation phases rather than by a sprint label
 ## Phase 3 — Product completeness
 
 - [x] Repository connection and manual GitHub sync
-- [ ] Metrics collection and visualization
+- [x] Metrics collection and visualization
 - [ ] Alert generation and resolution
-- [ ] In-app notifications
-- [ ] Repository-aware dashboard metrics
+- [x] In-app notifications
+- [x] Repository-aware dashboard metrics
 
 ## Phase 4 — Polish and ship
 
@@ -46,4 +46,3 @@ The product is complete when a user can:
 - trigger deployments and inspect logs
 - see health and monitoring data
 - act on alerts and notifications
-

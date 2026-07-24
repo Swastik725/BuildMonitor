@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import type { NavState } from "./lib/types";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
-import { deploymentsApi, organizationsApi, projectsApi, setTokens } from "./lib/api";
+import { deploymentsApi, notificationsApi, organizationsApi, projectsApi, setTokens } from "./lib/api";
 import { useResource } from "./lib/use-resource";
 import { Sidebar } from "./components/Sidebar";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ProjectPage } from "./pages/ProjectPage";
 import { DeploymentPage } from "./pages/DeploymentPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { OrgPage } from "./pages/OrgPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
@@ -34,6 +35,7 @@ function AppShell() {
   const organizations = useResource(() => organizationsApi.list(), [], 15000);
   const projects = useResource(() => projectsApi.list(), [], 15000);
   const recentDeployments = useResource(() => deploymentsApi.recent(), [], 5000);
+  const notifications = useResource(() => notificationsApi.list(), [], 10000);
   useOAuthCallback();
 
   useEffect(() => {
@@ -50,6 +52,8 @@ function AppShell() {
   }
 
   const activeOrganization = organizations.data?.[0] ?? null;
+  const unreadNotifications =
+    notifications.data?.filter(notification => !notification.read).length ?? 0;
   const selectedProjectId =
     nav.projectId ??
     recentDeployments.data?.[0]?.environment?.project?.id ??
@@ -63,6 +67,7 @@ function AppShell() {
         onNav={page => setNav(page === "project" ? { page: "dashboard" } : { page })}
         onLogout={logout}
         organizationName={activeOrganization?.name}
+        notificationCount={unreadNotifications}
       />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {nav.page === "dashboard" && <DashboardPage onNav={setNav} />}
@@ -80,6 +85,7 @@ function AppShell() {
             <WorkspaceEmpty title="Deployment" message={recentDeployments.loading ? "Loading deployments…" : "No deployments are available yet."} />
           )
         )}
+        {nav.page === "notifications" && <NotificationsPage onNav={setNav} />}
         {nav.page === "org"       && <OrgPage         onNav={setNav} />}
         {nav.page === "settings"  && <SettingsPage />}
       </main>

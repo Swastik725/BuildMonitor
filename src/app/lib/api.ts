@@ -22,6 +22,14 @@ export interface Repository {
   latestCommitAuthor?: string | null;
   latestCommitDate?: string | null;
 }
+export type MetricType = "CPU" | "MEMORY" | "LATENCY" | "NETWORK" | "DISK" | "REQUESTS" | "ERROR_RATE";
+export interface Metric {
+  id: string;
+  deploymentId: string;
+  metricType: MetricType;
+  value: number;
+  recordedAt: string;
+}
 export interface Project {
   id: string; organizationId: string; name: string; slug: string; description?: string | null;
   visibility: "PRIVATE" | "PUBLIC"; defaultBranch: string; repositoryUrl?: string | null;
@@ -35,6 +43,15 @@ export interface Deployment {
 }
 export interface DeploymentLog { id: string; timestamp: string; logLevel: "INFO" | "WARNING" | "ERROR" | "DEBUG"; message: string }
 export interface Incident { id: string; title: string; status: "OPEN" | "INVESTIGATING" | "RESOLVED"; openedAt: string; project?: { name: string; slug: string } }
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  createdAt: string;
+}
 export interface Member { id: string; role: string; user: { id: string; fullName: string; username: string; email: string; avatarUrl?: string | null; lastLogin?: string | null } }
 export interface User { id: string; email: string; username: string; fullName: string; avatarUrl?: string | null }
 
@@ -98,6 +115,21 @@ export const repositoriesApi = {
   connect: (projectId: string, repository: string) => apiFetch<Repository>(`/projects/${projectId}/repository/connect`, { method: "POST", body: JSON.stringify({ repository }) }),
   sync: (projectId: string) => apiFetch<Repository>(`/projects/${projectId}/repository/sync`, { method: "POST" }),
   disconnect: (projectId: string) => apiFetch<{ disconnected: true }>(`/projects/${projectId}/repository`, { method: "DELETE" }),
+};
+export const notificationsApi = {
+  list: () => apiFetch<Notification[]>("/notifications"),
+  markRead: (id: string) => apiFetch<Notification>(`/notifications/${id}/read`, { method: "PATCH" }),
+};
+export const metricsApi = {
+  list: (environmentId: string, query?: { type?: MetricType; from?: string; to?: string; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (query?.type) params.set("type", query.type);
+    if (query?.from) params.set("from", query.from);
+    if (query?.to) params.set("to", query.to);
+    if (query?.limit != null) params.set("limit", String(query.limit));
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiFetch<Metric[]>(`/environments/${environmentId}/metrics${suffix}`);
+  },
 };
 export const deploymentsApi = {
   recent: () => apiFetch<Deployment[]>("/deployments"),
