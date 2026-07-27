@@ -4,35 +4,39 @@ on:
   workflow_dispatch:
     inputs: {}
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build-and-deploy:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          node-version: '20'
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/buildmonitor-frontend:latest
 
-      - name: Build frontend
-        run: npm run build
-
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-
-      - name: Build backend
-        working-directory: ./backend
-        run: npm run build
-
-      # Replace this with your real deploy step (e.g. deploying to Render,
-      # Railway, a VPS over SSH, Vercel CLI, Docker push, etc).
-      # Leaving a real, visible step here (not a no-op) so BuildMonitor
-      # pulls back a genuine step name/result instead of nothing.
-      - name: Deploy
-        run: echo "Add your real deploy command here (e.g. rsync, ssh, docker push, platform CLI)"
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/buildmonitor-backend:latest

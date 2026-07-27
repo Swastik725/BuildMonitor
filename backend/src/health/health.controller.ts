@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +23,14 @@ export class HealthChecksController {
       projectId,
       user.id,
     );
+  }
+
+  @Post('projects/:projectId/health/check')
+  checkNow(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.healthChecksService.checkNow(projectId, user.id);
   }
 
   @Get('health/summary')

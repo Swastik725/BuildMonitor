@@ -1,31 +1,22 @@
-# 🐳 DOCKER.md
+# DOCKER.md
 
-Version: 2.0 (current build)
-
----
-
-# ⚠️ current build Scope Notice
-
-Full Docker Compose stack (Redis, Celery, Prometheus, Grafana, Nginx) is **next phase**. If time
-remains on Day 10, a single `Dockerfile` for the backend is a nice-to-have — not required, since
-Railway/Render can build directly from the repo.
+Version: 3.0
 
 ---
 
-# Services (current build, optional Day 10 stretch)
+# Scope
 
-Backend, PostgreSQL
+The repo now needs concrete container packaging for the frontend and backend so deployment targets
+can consume the same build artifacts used in CI.
 
 ---
 
-# next phase Services
+# Services
 
-Redis, Celery, Prometheus, Grafana, Nginx — reintroduced alongside the infra they support (see
-`PROJECT_BIBLE.md → Future Scope`).
+Frontend, backend, PostgreSQL
 
 ---
 
 # Status
 
-Deferred (optional Day 10 stretch, not required for current build)
-
+Needs concrete Dockerfiles for app packaging.

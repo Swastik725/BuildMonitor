@@ -5,11 +5,16 @@ import { RepositoriesService } from './repositories.service';
 import { ConnectRepositoryDto } from './dto/connect-repository.dto';
 
 @UseGuards(JwtAuthGuard)
-@Controller('projects/:projectId/repository')
+@Controller()
 export class RepositoriesController {
   constructor(private readonly repositoriesService: RepositoriesService) {}
 
-  @Get()
+  @Get('github/repositories')
+  listAvailable(@CurrentUser() user: { id: string }) {
+    return this.repositoriesService.listAvailable(user.id);
+  }
+
+  @Get('projects/:projectId/repository')
   findOne(
     @Param('projectId') projectId: string,
     @CurrentUser() user: { id: string },
@@ -17,7 +22,7 @@ export class RepositoriesController {
     return this.repositoriesService.findOne(projectId, user.id);
   }
 
-  @Post('connect')
+  @Post('projects/:projectId/repository/connect')
   connect(
     @Param('projectId') projectId: string,
     @CurrentUser() user: { id: string },
@@ -26,7 +31,7 @@ export class RepositoriesController {
     return this.repositoriesService.connect(projectId, user.id, dto);
   }
 
-  @Post('sync')
+  @Post('projects/:projectId/repository/sync')
   sync(
     @Param('projectId') projectId: string,
     @CurrentUser() user: { id: string },
@@ -34,7 +39,7 @@ export class RepositoriesController {
     return this.repositoriesService.sync(projectId, user.id);
   }
 
-  @Delete()
+  @Delete('projects/:projectId/repository')
   disconnect(
     @Param('projectId') projectId: string,
     @CurrentUser() user: { id: string },

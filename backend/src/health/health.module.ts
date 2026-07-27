@@ -3,6 +3,7 @@ import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { PrismaModule } from '../prisma/prisma.module';
+import { PublicHealthController } from './public-health.controller';
 import { HealthChecksController } from './health.controller';
 import { HealthChecksService } from './health.service';
 import { HealthScheduler } from './health.scheduler';
@@ -13,7 +14,7 @@ import { HealthScheduler } from './health.scheduler';
     ScheduleModule.forRoot(),
     PrismaModule,
   ],
-  controllers: [HealthChecksController],
+  controllers: [PublicHealthController, HealthChecksController],
   providers: [HealthChecksService, HealthScheduler],
   exports: [HealthChecksService],
 })

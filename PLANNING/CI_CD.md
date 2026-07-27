@@ -1,57 +1,48 @@
-# 🔄 CI_CD.md
+# CI_CD.md
 
-Version: 2.0 (current build)
+Version: 3.0
 
 ---
 
-# ⚠️ current build Scope Notice
+# Scope
 
-Docker image build + automated deploy pipeline are **next phase**. current build deploys manually to
-Railway/Render (backend) and Vercel (frontend) — both support "push to deploy" out of the box for
-the `main` branch, so a custom CD pipeline isn't needed yet.
+GitHub Actions builds both apps. The workflow now builds the frontend and backend, but the final
+deploy step still needs to be wired to the chosen hosting target.
 
 ---
 
 # Platform
 
-GitHub Actions (CI only for current build)
+GitHub Actions
 
 ---
 
-# Workflow (current build)
+# Workflow
 
+```text
+Push -> Install -> Lint -> Run Tests -> Build
 ```
-Push → Install → Lint → Run Tests → Build
-```
 
 ---
 
-# Jobs (current build)
+# Jobs
 
-Backend, Frontend
+Frontend, backend
 
 ---
 
-# Branches (current build)
+# Branches
 
-`main`, `feature/*` — skip `develop`/`hotfix/*` at this scale; a build solo sprint doesn't need
-a long-lived integration branch.
+`main`, `feature/*`
 
 ---
 
 # Requirements
 
-Tests pass, lint passes.
-
----
-
-# next phase
-
-Docker build step, automated deploy job, preview deployments, semantic versioning.
+Tests pass, lint passes, and deploy wiring points at a real target.
 
 ---
 
 # Status
 
-Building (current build)
-
+Partially implemented.

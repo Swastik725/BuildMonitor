@@ -38,11 +38,12 @@ incidents, metrics, and application health.
 
 ## Partially implemented
 
-- alerts and any additional UI that depends on those missing backend pieces
+- production deployment configuration
+- final UI consistency and smoke validation
+- AI-assisted repo error correction as a future separate feature
 
 ## Remaining product work
 
-- alert generation and resolution
 - production deployment hardening
 - final QA pass across the complete product surface
 
@@ -51,3 +52,4 @@ incidents, metrics, and application health.
 - The old `mockData.ts` fixture file has been removed.
 - OAuth callbacks now use configured frontend URLs.
 - CORS is driven by environment configuration instead of a hardcoded localhost origin.
+- Alert generation and resolution are implemented in the backend and surfaced in the UI.

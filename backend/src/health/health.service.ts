@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
 
@@ -26,8 +26,11 @@ export class HealthChecksService {
     for (const env of environments) {
       const project = env.project;
 
-      // Skip environments whose project has health checks turned off or
-      // never configured a URL to hit - nothing to actually check yet.
+      // Skip half-cooked projects the user hasn't marked ready yet, and
+      // skip ones whose health checks are off or never configured a URL.
+      if (!project.monitoringEnabled) {
+        continue;
+      }
       if (!project.healthEnabled || !project.healthUrl) {
         continue;
       }
@@ -95,6 +98,36 @@ export class HealthChecksService {
         },
       });
     }
+  }
+
+  /**
+   * Manual, on-demand check for one project - bypasses monitoringEnabled
+   * since an explicit request from the person should always run, even for
+   * a project not yet marked ready for the background scheduler.
+   */
+  async checkNow(projectId: string, userId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        id: projectId,
+        organization: { members: { some: { userId } } },
+      },
+      include: { environments: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+    if (!project.healthUrl) {
+      throw new BadRequestException('This project has no health check URL configured');
+    }
+
+    const results: string[] = [];
+    for (const env of project.environments) {
+      await this.checkOne(env.id, project);
+      results.push(env.id);
+    }
+
+    return this.findByProject(projectId, userId, project.environments.length);
   }
 
   findByProject(projectId: string, userId: string, limit = 50) {

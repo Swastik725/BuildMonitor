@@ -159,6 +159,7 @@ export class AuthService {
   email: string;
   fullName: string;
   avatarUrl?: string;
+  accessToken?: string;
 }, provider: 'google' | 'github') {
   const existingAuth = await this.prisma.authProvider.findUnique({
     where: { provider_providerId: { provider, providerId: profile.providerId } },
@@ -166,6 +167,15 @@ export class AuthService {
   });
 
   if (existingAuth) {
+    // Refresh the stored token on every login - GitHub tokens don't
+    // expire by default, but re-consent (e.g. after a scope change)
+    // issues a new one, and we want the latest.
+    if (profile.accessToken) {
+      await this.prisma.authProvider.update({
+        where: { id: existingAuth.id },
+        data: { accessToken: profile.accessToken },
+      });
+    }
     return this.generateTokens(existingAuth.user.id, existingAuth.user.email);
   }
 
@@ -200,7 +210,12 @@ export class AuthService {
 
   // Link this provider to the (existing or newly created) user
   await this.prisma.authProvider.create({
-    data: { provider, providerId: profile.providerId, userId: user.id },
+    data: {
+      provider,
+      providerId: profile.providerId,
+      userId: user.id,
+      accessToken: profile.accessToken,
+    },
   });
 
   return this.generateTokens(user.id, user.email);

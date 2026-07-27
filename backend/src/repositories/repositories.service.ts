@@ -41,14 +41,61 @@ type RepositoryConnectionInput = {
 export class RepositoriesService {
   constructor(private prisma: PrismaService) {}
 
-  private githubHeaders() {
-    const token = process.env.GITHUB_TOKEN;
+  /**
+   * Prefers the connecting user's own GitHub OAuth token (so listing/reading
+   * repos reflects what THEY actually have access to) and falls back to the
+   * shared env token (used for the actions:write scope needed to trigger
+   * deployments, which the login scope doesn't grant).
+   */
+  private async getUserGithubToken(userId: string): Promise<string | undefined> {
+    const authProvider = await this.prisma.authProvider.findFirst({
+      where: { userId, provider: 'github' },
+      select: { accessToken: true },
+    });
+
+    return authProvider?.accessToken ?? undefined;
+  }
+
+  private githubHeaders(token?: string) {
+    const accessToken = token ?? process.env.GITHUB_TOKEN;
 
     return {
       Accept: 'application/vnd.github+json',
       'User-Agent': 'BuildMonitor',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     };
+  }
+
+  /** Lists every repo the connected GitHub account actually has access to. */
+  async listAvailable(userId: string) {
+    const token = await this.getUserGithubToken(userId);
+    if (!token) {
+      throw new BadRequestException(
+        'Sign in with GitHub first to list your repositories',
+      );
+    }
+
+    const response = await axios.get<GitHubRepositoryResponse[]>(
+      'https://api.github.com/user/repos',
+      {
+        headers: this.githubHeaders(token),
+        params: {
+          per_page: 100,
+          sort: 'updated',
+          affiliation: 'owner,collaborator,organization_member',
+        },
+      },
+    );
+
+    return response.data.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      fullName: repo.full_name,
+      htmlUrl: repo.html_url,
+      defaultBranch: repo.default_branch,
+      private: repo.private,
+      description: repo.description ?? null,
+    }));
   }
 
   private parseRepositoryReference(repository: string): RepositoryConnectionInput {
@@ -88,22 +135,22 @@ export class RepositoriesService {
     );
   }
 
-  private async fetchRepository(owner: string, repo: string) {
+  private async fetchRepository(owner: string, repo: string, token?: string) {
     const response = await axios.get<GitHubRepositoryResponse>(
       `https://api.github.com/repos/${owner}/${repo}`,
       {
-        headers: this.githubHeaders(),
+        headers: this.githubHeaders(token),
       },
     );
 
     return response.data;
   }
 
-  private async fetchLatestCommit(owner: string, repo: string, branch: string) {
+  private async fetchLatestCommit(owner: string, repo: string, branch: string, token?: string) {
     const response = await axios.get<GitHubCommitResponse>(
       `https://api.github.com/repos/${owner}/${repo}/commits`,
       {
-        headers: this.githubHeaders(),
+        headers: this.githubHeaders(token),
         params: {
           sha: branch,
           per_page: 1,
@@ -145,12 +192,14 @@ export class RepositoriesService {
   async connect(projectId: string, userId: string, dto: ConnectRepositoryDto) {
     await this.ensureProjectAccess(projectId, userId);
 
+    const token = await this.getUserGithubToken(userId);
     const { owner, repo } = this.parseRepositoryReference(dto.repository);
-    const remote = await this.fetchRepository(owner, repo);
+    const remote = await this.fetchRepository(owner, repo, token);
     const latestCommit = await this.fetchLatestCommit(
       remote.owner.login,
       remote.name,
       remote.default_branch,
+      token,
     );
 
     const payload = {
@@ -163,6 +212,7 @@ export class RepositoriesService {
       defaultBranch: remote.default_branch,
       visibility: remote.private ? Visibility.PRIVATE : Visibility.PUBLIC,
       webhookSecret: cryptoRandomSecret(),
+      workflowFile: dto.workflowFile || 'deploy.yml',
       isConnected: true,
       lastSync: new Date(),
       latestCommitSha: latestCommit?.sha ?? null,
@@ -201,14 +251,17 @@ export class RepositoriesService {
       throw new NotFoundException('Repository not connected');
     }
 
+    const token = await this.getUserGithubToken(userId);
     const remote = await this.fetchRepository(
       repository.githubOwner,
       repository.repositoryName,
+      token,
     );
     const latestCommit = await this.fetchLatestCommit(
       repository.githubOwner,
       repository.repositoryName,
       remote.default_branch,
+      token,
     );
 
     return this.prisma.$transaction(async tx => {

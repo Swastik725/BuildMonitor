@@ -5,7 +5,7 @@ This roadmap tracks what still remains after the current build work.
 ## Phase 1 — Foundation
 
 - [x] NestJS backend wired to Prisma and PostgreSQL
-- [x] React + Vite frontend shell
+- [x] Next.js frontend shell
 - [x] JWT auth and OAuth login
 - [x] Organization and project data model
 - [x] Shared API client and auth context
@@ -23,7 +23,7 @@ This roadmap tracks what still remains after the current build work.
 
 - [x] Repository connection and manual GitHub sync
 - [x] Metrics collection and visualization
-- [ ] Alert generation and resolution
+- [x] Alert generation and resolution
 - [x] In-app notifications
 - [x] Repository-aware dashboard metrics
 
@@ -34,6 +34,7 @@ This roadmap tracks what still remains after the current build work.
 - [ ] End-to-end smoke testing
 - [ ] Remove stale or dead test data
 - [ ] Final UI consistency pass
+- [ ] Evaluate AI-assisted repo repair as a separate feature
 
 ## Definition of done
 

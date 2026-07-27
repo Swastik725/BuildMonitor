@@ -50,17 +50,25 @@ export class AlertsService {
 
   @Interval(5000)
   async evaluate() {
-    const projects = await this.prisma.project.findMany({
-      where: { deletedAt: null },
-      include: {
-        environments: {
-          include: {
-            deployments: { orderBy: { createdAt: 'desc' }, take: 1 },
-            healthChecks: { orderBy: { checkedAt: 'desc' }, take: 1 },
+    let projects;
+    try {
+      projects = await this.prisma.project.findMany({
+        where: { deletedAt: null },
+        include: {
+          environments: {
+            include: {
+              deployments: { orderBy: { createdAt: 'desc' }, take: 1 },
+              healthChecks: { orderBy: { checkedAt: 'desc' }, take: 1 },
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Skipping alert evaluation because the database is unavailable: ${(error as Error).message}`,
+      );
+      return;
+    }
 
     for (const project of projects) {
       for (const environment of project.environments) {

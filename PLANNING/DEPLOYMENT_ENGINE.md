@@ -1,80 +1,60 @@
-# 🚀 DEPLOYMENT_ENGINE.md
+# DEPLOYMENT_ENGINE.md
 
-Version: 2.0 (current build — Simulated)
-
----
-
-# ⚠️ current build Scope Notice
-
-**This is a simulator, not a real build/deploy system.** BuildMonitor is a monitoring platform,
-not a CI/CD product — in current build there is no real code being built, tested, or deployed anywhere. The
-goal is to model the deployment *lifecycle* realistically (states, timing, logs) so the
-monitoring/alerting features have something real to react to. This should be stated plainly in
-the README/demo, not hidden.
+Version: 3.0
 
 ---
 
-# Goal (current build)
+# Scope
 
-Simulate a deployment lifecycle realistically enough to drive the monitoring, alerting, and
-notification features.
-
----
-
-# Deployment States (unchanged)
-
-```
-QUEUED → RUNNING → SUCCESS / FAILED
-```
-(`CANCELLED` stays in the schema/enum but isn't reachable from the current build UI.)
+Deployment tracking is backed by real GitHub Actions dispatch and polling rather than a simulator.
+BuildMonitor creates deployment rows, dispatches the connected repository workflow, then polls
+GitHub for the actual run status and job logs.
 
 ---
 
-# Flow (current build)
+# Goal
 
-```
-User clicks "Deploy"
-   ↓
-Deployment row created (QUEUED)
-   ↓
-@nestjs/schedule tick picks it up → RUNNING
-   ↓
-Generates canned-but-varied log lines over several ticks (e.g. "Installing dependencies…",
-"Running tests…", "Building…", "Deploying…")
-   ↓
-Resolves to SUCCESS (~85% of the time) or FAILED (~15%, to give Alerts something to react to)
-   ↓
-duration/finishedAt set → Metrics simulator starts for the environment → Alert created if FAILED
-   ↓
-Notification created for the triggering user
+Track actual deployment lifecycles, log lines, and notifications for connected repositories.
+
+---
+
+# Deployment states
+
+```text
+QUEUED -> RUNNING -> SUCCESS / FAILED / CANCELLED
 ```
 
 ---
 
-# Deployment Data (unchanged)
+# Flow
 
-Commit SHA, commit message, branch, triggered-by, duration, status, environment.
+```text
+User clicks "Trigger deployment"
+  -> Backend dispatches the repository's GitHub Actions workflow
+  -> Deployment row created (QUEUED)
+  -> Poller matches the GitHub run id
+  -> GitHub run status transitions to RUNNING
+  -> Job/step data are mirrored into deployment logs
+  -> Run completes with SUCCESS / FAILED / CANCELLED
+  -> Deployment row is updated and notifications are sent
+```
 
-(In current build, `commitSha`/`commitMessage` can be supplied by the user when triggering a deploy, or
-defaulted from the connected repository's latest known commit if available.)
+---
+
+# Deployment data
+
+Commit SHA, commit message, branch, triggered-by, duration, status, environment, workflow file,
+GitHub run id, dispatch time.
 
 ---
 
 # Logs
 
-Persistent in `deployment_logs`, paginated over the API. No real-time streaming in current build — the
-frontend polls `GET /deployments/{id}/logs` every few seconds while status is `RUNNING`.
-
----
-
-# next phase
-
-Real build execution, rollback, blue/green, canary, pipeline builder, real GitHub Actions/webhook
-triggered deploys.
+Persistent in `deployment_logs`. The frontend polls `GET /deployments/{id}/logs` while a
+deployment is active.
 
 ---
 
 # Status
 
-Building (current build)
-
+Implemented against real GitHub Actions dispatch and polling.

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ListMetricsQueryDto } from './dto/list-metrics.query';
@@ -16,5 +16,13 @@ export class MetricsController {
     @Query() query: ListMetricsQueryDto,
   ) {
     return this.metricsService.findByEnvironment(environmentId, user.id, query);
+  }
+
+  @Post('projects/:projectId/metrics/collect')
+  collectNow(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.metricsService.collectNow(projectId, user.id);
   }
 }

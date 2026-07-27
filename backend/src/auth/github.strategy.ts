@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-github2';
+import { getFrontendUrl } from '../config/runtime';
 
 @Injectable()
 export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
   constructor() {
     super({
-      clientID: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-      callbackURL: process.env.GITHUB_CALLBACK_URL!,
-      scope: ['user:email'],
+      clientID: process.env.GITHUB_CLIENT_ID || 'local-github-client-id',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || 'local-github-client-secret',
+      callbackURL: process.env.GITHUB_CALLBACK_URL || `${getFrontendUrl()}/oauth-success`,
+      scope: ['user:email', 'repo'],
     });
   }
 
@@ -23,6 +24,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       email,
       fullName: profile.displayName || profile.username,
       avatarUrl: profile.photos?.[0]?.value,
+      accessToken,
     };
     done(null, user);
   }

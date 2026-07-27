@@ -2,23 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback, StrategyOptions } from 'passport-google-oauth20';
 import dotenv from 'dotenv';
+import { getFrontendUrl } from '../config/runtime';
 dotenv.config();
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor() {
-    const clientID = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const callbackURL = process.env.GOOGLE_CALLBACK_URL;
-
-    if (!clientID || !clientSecret || !callbackURL) {
-      throw new Error('Missing Google OAuth environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL)');
-    }
-
     const options: StrategyOptions = {
-      clientID,
-      clientSecret,
-      callbackURL,
+      clientID: process.env.GOOGLE_CLIENT_ID || 'local-google-client-id',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'local-google-client-secret',
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || `${getFrontendUrl()}/oauth-success`,
       scope: ['email', 'profile'],
     };
 

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsUUID, MinLength, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, MinLength, IsUrl, IsBoolean } from 'class-validator';
 import { Visibility } from '../../../generated/prisma/enums';
 
 export class CreateProjectDto {
@@ -38,4 +38,13 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   branch?: string;
+
+  /**
+   * Gates both the health-check scheduler and the metrics collector.
+   * Defaults to false so newly-created (possibly half-built) projects
+   * aren't checked/measured until the person explicitly flips this on.
+   */
+  @IsOptional()
+  @IsBoolean()
+  monitoringEnabled?: boolean;
 }
