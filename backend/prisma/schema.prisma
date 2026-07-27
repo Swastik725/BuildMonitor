@@ -39,6 +39,7 @@ model AuthProvider {
   userId     String   @map("user_id")
   user       User     @relation(fields: [userId], references: [id])
   createdAt  DateTime @default(now()) @map("created_at")
+  accessToken String?
 
   @@unique([provider, providerId])
   @@map("auth_providers")
@@ -109,6 +110,7 @@ model Project {
   timeout        Int           @default(5000)
   expectedStatus Int           @default(200)
   expectedBody   String?
+  monitoringEnabled Boolean @default(false)
 
   @@index([organizationId])
   @@index([slug])
@@ -135,6 +137,7 @@ model Repository {
   updatedAt          DateTime   @updatedAt @map("updated_at")
   deletedAt          DateTime?  @map("deleted_at")
   project            Project    @relation(fields: [projectId], references: [id])
+  workflowFile       String?     @default("deploy.yml")
 }
 
 model Environment {
@@ -163,6 +166,9 @@ model Deployment {
   finishedAt    DateTime?        @map("finished_at")
   createdAt     DateTime         @default(now()) @map("created_at")
   environment   Environment      @relation(fields: [environmentId], references: [id])
+  dispatchedAt DateTime? 
+  githubRunId  String?   @unique 
+  workflowFile String? 
   triggeredBy   User             @relation("TriggeredBy", fields: [triggeredById], references: [id])
   logs          DeploymentLog[]
   metrics       Metric[]

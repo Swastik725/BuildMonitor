@@ -1,0 +1,38 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
+
+      # Replace this with your real deploy step (e.g. deploying to Render,
+      # Railway, a VPS over SSH, Vercel CLI, Docker push, etc).
+      # Leaving a real, visible step here (not a no-op) so BuildMonitor
+      # pulls back a genuine step name/result instead of nothing.
+      - name: Deploy
+        run: echo "Add your real deploy command here (e.g. rsync, ssh, docker push, platform CLI)"

@@ -9,6 +9,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { ProjectPage } from "./pages/ProjectPage";
 import { DeploymentPage } from "./pages/DeploymentPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { AlertsPage } from "./pages/AlertsPage";
 import { OrgPage } from "./pages/OrgPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
@@ -86,6 +87,7 @@ function AppShell() {
           )
         )}
         {nav.page === "notifications" && <NotificationsPage onNav={setNav} />}
+        {nav.page === "alerts" && <AlertsPage onNav={setNav} />}
         {nav.page === "org"       && <OrgPage         onNav={setNav} />}
         {nav.page === "settings"  && <SettingsPage />}
       </main>

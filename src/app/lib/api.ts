@@ -52,6 +52,15 @@ export interface Notification {
   read: boolean;
   createdAt: string;
 }
+export interface Alert {
+  id: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  title: string;
+  description: string;
+  resolved: boolean;
+  createdAt: string;
+  project?: { name: string; slug: string };
+}
 export interface Member { id: string; role: string; user: { id: string; fullName: string; username: string; email: string; avatarUrl?: string | null; lastLogin?: string | null } }
 export interface User { id: string; email: string; username: string; fullName: string; avatarUrl?: string | null }
 
@@ -119,6 +128,10 @@ export const repositoriesApi = {
 export const notificationsApi = {
   list: () => apiFetch<Notification[]>("/notifications"),
   markRead: (id: string) => apiFetch<Notification>(`/notifications/${id}/read`, { method: "PATCH" }),
+};
+export const alertsApi = {
+  list: (resolved = false) => apiFetch<Alert[]>(`/alerts?resolved=${resolved}`),
+  resolve: (id: string) => apiFetch<Alert>(`/alerts/${id}/resolve`, { method: "PATCH" }),
 };
 export const metricsApi = {
   list: (environmentId: string, query?: { type?: MetricType; from?: string; to?: string; limit?: number }) => {
