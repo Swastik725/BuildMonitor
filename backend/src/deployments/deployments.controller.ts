@@ -24,12 +24,21 @@ export class DeploymentsController {
     @Param('projectId') projectId: string,
     @CurrentUser() user: any,
     @Body() dto: TriggerDeploymentDto,
-  ) {
+    ) {
     return this.deploymentsService.trigger(
       projectId,
       user.id,
       dto,
     );
+  }
+
+  @Post('projects/:projectId/deployments/direct')
+  deployToProvider(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: any,
+    @Body() dto: TriggerDeploymentDto & { provider?: 'vercel' | 'github-actions' },
+  ) {
+    return this.deploymentsService.deployToProvider(projectId, user.id, dto);
   }
 
   @Get('projects/:projectId/deployments')

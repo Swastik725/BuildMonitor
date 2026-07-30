@@ -15,6 +15,8 @@ import { RepositoriesModule } from './repositories/repositories.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { TerminalModule } from './terminal/terminal.module';
+import { CodeCheckerModule } from './code-checker/code-checker.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { AlertsModule } from './alerts/alerts.module';
     MetricsModule,
     NotificationsModule,
     AlertsModule,
+    TerminalModule,
+    CodeCheckerModule,
   ],
 })
 export class AppModule {}

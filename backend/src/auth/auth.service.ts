@@ -15,57 +15,51 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-  const existing = await this.prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: dto.email },
-        { username: dto.username },
-      ],
-    },
-  });
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: dto.email }, { username: dto.username }],
+      },
+    });
 
-  if (existing) {
-    throw new ConflictException('Email or username already in use');
-  }
+    if (existing) {
+      throw new ConflictException('Email or username already in use');
+    }
 
-  const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await bcrypt.hash(dto.password, 10);
 
-  const user = await this.prisma.$transaction(async tx => {
-    const createdUser = await tx.user.create({
+    const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         username: dto.username,
         passwordHash,
         fullName: dto.fullName,
-        authProviders: {
-          create: {
-            provider: 'local',
-            providerId: dto.email,
-          },
-        },
       },
     });
 
-    await tx.organization.create({
+    await this.prisma.authProvider.create({
+      data: {
+        provider: 'local',
+        providerId: dto.email,
+        userId: user.id,
+      },
+    });
+
+    await this.prisma.organization.create({
       data: {
         name: `${dto.fullName}'s Workspace`,
-        slug: `personal-${createdUser.id.slice(0, 8)}`,
+        slug: `personal-${user.id.slice(0, 8)}`,
         members: {
           create: {
-            userId: createdUser.id,
+            userId: user.id,
             role: 'OWNER',
           },
         },
       },
     });
 
-    return createdUser;
-  });
-
-  const { passwordHash: _, ...safeUser } = user;
-
-  return safeUser;
-}
+    const { passwordHash: _, ...safeUser } = user;
+    return safeUser;
+  }
   async validateUser(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.passwordHash) {
@@ -185,26 +179,22 @@ export class AuthService {
   if (!user) {
     // OAuth users need the same usable first-run experience as email/password
     // registrations: create their personal organization and owner membership atomically.
-    user = await this.prisma.$transaction(async tx => {
-      const createdUser = await tx.user.create({
-        data: {
-          email: profile.email,
-          username: profile.email.split('@')[0] + '_' + Math.random().toString(36).slice(2, 7),
-          fullName: profile.fullName,
-          avatarUrl: profile.avatarUrl,
-          emailVerified: true,
-        },
-      });
+    user = await this.prisma.user.create({
+      data: {
+        email: profile.email,
+        username: profile.email.split('@')[0] + '_' + Math.random().toString(36).slice(2, 7),
+        fullName: profile.fullName,
+        avatarUrl: profile.avatarUrl,
+        emailVerified: true,
+      },
+    });
 
-      await tx.organization.create({
-        data: {
-          name: `${profile.fullName}'s Workspace`,
-          slug: `personal-${createdUser.id.slice(0, 8)}`,
-          members: { create: { userId: createdUser.id, role: 'OWNER' } },
-        },
-      });
-
-      return createdUser;
+    await this.prisma.organization.create({
+      data: {
+        name: `${profile.fullName}'s Workspace`,
+        slug: `personal-${user.id.slice(0, 8)}`,
+        members: { create: { userId: user.id, role: 'OWNER' } },
+      },
     });
   }
 

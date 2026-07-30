@@ -9,7 +9,9 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
     super({
       clientID: process.env.GITHUB_CLIENT_ID || 'local-github-client-id',
       clientSecret: process.env.GITHUB_CLIENT_SECRET || 'local-github-client-secret',
-      callbackURL: process.env.GITHUB_CALLBACK_URL || `${getFrontendUrl()}/oauth-success`,
+      callbackURL:
+        process.env.GITHUB_CALLBACK_URL ||
+        `${getFrontendUrl().replace(/:\d+$/, ':3001')}/auth/github/callback`,
       scope: ['user:email', 'repo'],
     });
   }

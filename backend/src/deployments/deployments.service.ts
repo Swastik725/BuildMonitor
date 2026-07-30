@@ -149,6 +149,97 @@ export class DeploymentsService {
     return deployment;
   }
 
+  async deployToProvider(
+    projectId: string,
+    userId: string,
+    dto: TriggerDeploymentDto & { provider?: 'vercel' | 'github-actions' },
+  ) {
+    const provider = dto.provider || 'github-actions';
+    if (provider === 'github-actions') {
+      return this.trigger(projectId, userId, dto);
+    }
+
+    if (provider === 'vercel') {
+      return this.deployToVercel(projectId, userId, dto);
+    }
+
+    throw new BadRequestException('Unsupported deployment provider');
+  }
+
+  private async deployToVercel(
+    projectId: string,
+    userId: string,
+    dto: TriggerDeploymentDto,
+  ) {
+    const environment = await this.prisma.environment.findFirst({
+      where: {
+        projectId,
+        environmentType: 'PRODUCTION',
+        project: {
+          organization: {
+            members: {
+              some: { userId },
+            },
+          },
+        },
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            organizationId: true,
+            repository: true,
+          },
+        },
+      },
+    });
+
+    if (!environment) {
+      throw new NotFoundException('Project or production environment not found');
+    }
+
+    const token = process.env.VERCEL_TOKEN;
+    const teamId = process.env.VERCEL_TEAM_ID;
+    const projectName = process.env.VERCEL_PROJECT_NAME;
+
+    if (!token || !projectName) {
+      throw new BadRequestException('Vercel is not configured');
+    }
+
+    const deployment = await axios.post(
+      'https://api.vercel.com/v13/deployments',
+      {
+        name: projectName,
+        target: 'production',
+        gitSource: environment.project.repository
+          ? {
+              type: 'github',
+              repoId: Number(environment.project.repository.githubRepositoryId),
+              ref: dto.branch || environment.project.repository.defaultBranch || 'main',
+            }
+          : undefined,
+        meta: {
+          projectId,
+          commitMessage: dto.commitMessage || 'Manual deployment',
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        params: teamId ? { teamId } : undefined,
+      },
+    );
+
+    return {
+      provider: 'vercel',
+      deployment: deployment.data,
+      environmentId: environment.id,
+    };
+  }
+
   findAllByProject(projectId: string, userId: string) {
     return this.prisma.deployment.findMany({
       where: {

@@ -1,110 +1,201 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import axios from 'axios';
 
-type Tokens = { accessToken: string; refreshToken: string };
+// Points at your NestJS backend. Set VITE_API_URL in .env to override
+// (e.g. VITE_API_URL=http://localhost:3001) for local dev.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-function getTokens(): Tokens | null {
-  if (typeof window === "undefined") return null;
-  const accessToken = localStorage.getItem("bm_access_token");
-  const refreshToken = localStorage.getItem("bm_refresh_token");
-  if (!accessToken || !refreshToken) return null;
-  return { accessToken, refreshToken };
-}
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+});
 
-export function setTokens(tokens: Tokens) {
-  localStorage.setItem("bm_access_token", tokens.accessToken);
-  localStorage.setItem("bm_refresh_token", tokens.refreshToken);
-}
-
-export function clearTokens() {
-  localStorage.removeItem("bm_access_token");
-  localStorage.removeItem("bm_refresh_token");
-}
-
-class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
+// Attach the access token to every request. We store it in localStorage;
+// swap for httpOnly cookies later if you want tighter security, but that
+// requires backend changes (cookie-parser + CORS credentials) not present yet.
+api.interceptors.request.use(config => {
+  const token = window.localStorage.getItem('buildmonitor-access-token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-}
+  return config;
+});
 
-let refreshPromise: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  const tokens = getTokens();
-  if (!tokens) return null;
-
-  if (!refreshPromise) {
-    refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken: tokens.refreshToken }),
-    })
-      .then(async (res) => {
-        if (!res.ok) return null;
-        const data = await res.json();
-        setTokens(data);
-        return data.accessToken as string;
-      })
-      .catch(() => null)
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
-
-  return refreshPromise;
-}
-
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-  retried = false,
-): Promise<T> {
-  const tokens = getTokens();
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(tokens ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
-      ...options.headers,
-    },
-  });
-
-  if (res.status === 401 && !retried && tokens) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      return request<T>(path, options, true);
+// On a 401, clear the stored token and bounce to login. We don't attempt
+// silent refresh here yet — /auth/refresh exists on the backend, but wiring
+// automatic retry-after-refresh is a follow-up, not v1-critical.
+api.interceptors.response.use(
+  res => res,
+  err => {
+    if (err.response?.status === 401) {
+      window.localStorage.removeItem('buildmonitor-access-token');
+      window.location.href = '/login';
     }
-    clearTokens();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
-    throw new ApiError(401, "Session expired");
-  }
+    return Promise.reject(err);
+  },
+);
 
-  if (!res.ok) {
-    let message = `Request failed (${res.status})`;
-    try {
-      const body = await res.json();
-      message = body.message || message;
-    } catch {
-      // response wasn't JSON - keep the generic message
-    }
-    throw new ApiError(res.status, Array.isArray(message) ? message.join(", ") : message);
-  }
+// ---- Types mirroring the Prisma models we're actually hitting ----
 
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
-
-export const api = {
-  get: <T,>(path: string) => request<T>(path),
-  post: <T,>(path: string, body?: unknown) =>
-    request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
-  patch: <T,>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
-  delete: <T,>(path: string) => request<T>(path, { method: "DELETE" }),
+export type Organization = {
+  id: string;
+  name: string;
+  slug: string;
 };
 
-export { API_BASE, ApiError };
+export type Project = {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  visibility: 'PRIVATE' | 'PUBLIC';
+  defaultBranch: string;
+  repositoryUrl: string | null;
+  healthUrl: string | null;
+  healthEnabled: boolean;
+  monitoringEnabled: boolean;
+  repository?: Repository | null;
+};
+
+export type Repository = {
+  id: string;
+  githubOwner: string;
+  repositoryName: string;
+  htmlUrl: string | null;
+  defaultBranch: string;
+  isConnected: boolean;
+  lastSync: string | null;
+  latestCommitSha: string | null;
+  latestCommitMessage: string | null;
+  latestCommitAuthor: string | null;
+};
+
+export type GithubRepoOption = {
+  id: number;
+  name: string;
+  fullName: string;
+  htmlUrl: string;
+  defaultBranch: string;
+  private: boolean;
+  description: string | null;
+};
+
+export type Deployment = {
+  id: string;
+  environmentId: string;
+  branch: string;
+  commitSha: string;
+  commitMessage: string;
+  status: 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  duration: number | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  triggeredBy?: { id: string; fullName: string; username: string };
+};
+
+export type HealthCheck = {
+  id: string;
+  status: string;
+  statusCode: number | null;
+  responseTime: number | null;
+  message: string | null;
+  checkedAt: string;
+};
+
+export type Incident = {
+  id: string;
+  title: string;
+  status: 'OPEN' | 'INVESTIGATING' | 'RESOLVED';
+  openedAt: string;
+  resolvedAt: string | null;
+};
+
+// ---- Auth ----
+export const authApi = {
+  register: (data: { email: string; username: string; password: string; fullName: string }) =>
+    api.post('/auth/register', data),
+  login: (data: { email: string; password: string }) =>
+    api.post<{ accessToken: string }>('/auth/login', data),
+  me: () => api.get('/auth/me'),
+  googleUrl: () => `${API_BASE_URL}/auth/google`,
+  githubUrl: () => `${API_BASE_URL}/auth/github`,
+};
+
+// ---- Organizations ----
+export const orgsApi = {
+  list: () => api.get<Organization[]>('/organizations'),
+  create: (data: { name: string; slug: string }) => api.post<Organization>('/organizations', data),
+  get: (id: string) => api.get<Organization>(`/organizations/${id}`),
+};
+
+// ---- Projects ----
+export const projectsApi = {
+  list: () => api.get<Project[]>('/projects'),
+  get: (id: string) => api.get<Project>(`/projects/${id}`),
+  create: (data: { name: string; slug: string; organizationId: string; visibility: 'PRIVATE' | 'PUBLIC'; defaultBranch: string }) =>
+    api.post<Project>('/projects', data),
+  delete: (id: string) => api.delete(`/projects/${id}`),
+};
+
+// ---- Repositories (GitHub sync) ----
+export const reposApi = {
+  listAvailable: () => api.get<GithubRepoOption[]>('/github/repositories'),
+  getConnected: (projectId: string) => api.get<Repository>(`/projects/${projectId}/repository`),
+  connect: (projectId: string, repository: string) =>
+    api.post<Repository>(`/projects/${projectId}/repository/connect`, { repository }),
+  sync: (projectId: string) => api.post<Repository>(`/projects/${projectId}/repository/sync`),
+  disconnect: (projectId: string) => api.delete(`/projects/${projectId}/repository`),
+};
+
+// ---- Deployments ----
+export const deploymentsApi = {
+  listByProject: (projectId: string) => api.get<Deployment[]>(`/projects/${projectId}/deployments`),
+  trigger: (projectId: string, data?: { branch?: string; commitMessage?: string }) =>
+    api.post<Deployment>(`/projects/${projectId}/deployments`, data ?? {}),
+  logs: (deploymentId: string) => api.get(`/deployments/${deploymentId}/logs`),
+  retry: (deploymentId: string) => api.patch(`/deployments/${deploymentId}/retry`),
+  cancel: (deploymentId: string) => api.patch(`/deployments/${deploymentId}/cancel`),
+};
+
+// ---- Health ----
+export const healthApi = {
+  listByProject: (projectId: string) => api.get<HealthCheck[]>(`/projects/${projectId}/health`),
+  checkNow: (projectId: string) => api.post(`/projects/${projectId}/health/check`),
+};
+
+// ---- Incidents ----
+export const incidentsApi = {
+  listByProject: (projectId: string) => api.get<Incident[]>(`/projects/${projectId}/incidents`),
+  resolve: (id: string) => api.patch(`/incidents/${id}/resolve`),
+};
+
+export type CodeFinding = {
+  id: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  title: string;
+  details: string;
+  evidence: string[];
+  suggestedFix?: string;
+  autoFixable: boolean;
+  confidence: number;
+  source: 'deterministic' | 'llm';
+};
+
+export type CodeCheckReport = {
+  projectId: string;
+  repository: string;
+  checkedAt: string;
+  snapshot: { commitSha: string; fileCount: number };
+  findings: CodeFinding[];
+};
+
+// ---- Dashboard ----
+export const dashboardApi = {
+  summary: () => api.get('/dashboard'),
+};
+
+// ---- Code Checker ----
+export const codeCheckerApi = {
+  run: (projectId: string) => api.post<CodeCheckReport>(`/projects/${projectId}/code-check`),
+  history: (projectId: string) => api.get<CodeCheckReport[]>(`/projects/${projectId}/code-check/history`),
+};

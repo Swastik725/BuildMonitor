@@ -69,33 +69,39 @@ export class RepositoriesService {
   /** Lists every repo the connected GitHub account actually has access to. */
   async listAvailable(userId: string) {
     const token = await this.getUserGithubToken(userId);
-    if (!token) {
-      throw new BadRequestException(
-        'Sign in with GitHub first to list your repositories',
-      );
-    }
 
-    const response = await axios.get<GitHubRepositoryResponse[]>(
-      'https://api.github.com/user/repos',
-      {
-        headers: this.githubHeaders(token),
-        params: {
-          per_page: 100,
-          sort: 'updated',
-          affiliation: 'owner,collaborator,organization_member',
+    try {
+      const response = await axios.get<GitHubRepositoryResponse[]>(
+        'https://api.github.com/user/repos',
+        {
+          headers: this.githubHeaders(token),
+          params: {
+            per_page: 100,
+            sort: 'updated',
+            affiliation: 'owner,collaborator,organization_member',
+          },
         },
-      },
-    );
+      );
 
-    return response.data.map(repo => ({
-      id: repo.id,
-      name: repo.name,
-      fullName: repo.full_name,
-      htmlUrl: repo.html_url,
-      defaultBranch: repo.default_branch,
-      private: repo.private,
-      description: repo.description ?? null,
-    }));
+      return response.data.map(repo => ({
+        id: repo.id,
+        name: repo.name,
+        fullName: repo.full_name,
+        htmlUrl: repo.html_url,
+        defaultBranch: repo.default_branch,
+        private: repo.private,
+        description: repo.description ?? null,
+      }));
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        throw new BadRequestException(
+          'Your GitHub session expired. Sign in with GitHub again, then retry connecting the repository.',
+        );
+      }
+
+      throw error;
+    }
   }
 
   private parseRepositoryReference(repository: string): RepositoryConnectionInput {
@@ -264,38 +270,36 @@ export class RepositoriesService {
       token,
     );
 
-    return this.prisma.$transaction(async tx => {
-      const updated = await tx.repository.update({
-        where: { projectId },
-        data: {
-          githubRepositoryId: String(remote.id),
-          githubOwner: remote.owner.login,
-          repositoryName: remote.name,
-          cloneUrl: remote.clone_url,
-          htmlUrl: remote.html_url,
-          defaultBranch: remote.default_branch,
-          visibility: remote.private ? Visibility.PRIVATE : Visibility.PUBLIC,
-          isConnected: true,
-          lastSync: new Date(),
-          latestCommitSha: latestCommit?.sha ?? null,
-          latestCommitMessage: latestCommit?.commit.message ?? null,
-          latestCommitAuthor: latestCommit?.commit.author?.name ?? null,
-          latestCommitDate: latestCommit?.commit.author?.date
-            ? new Date(latestCommit.commit.author.date)
-            : null,
-        },
-      });
-
-      await tx.project.update({
-        where: { id: projectId },
-        data: {
-          repositoryUrl: remote.html_url,
-          defaultBranch: remote.default_branch,
-        },
-      });
-
-      return updated;
+    const updated = await this.prisma.repository.update({
+      where: { projectId },
+      data: {
+        githubRepositoryId: String(remote.id),
+        githubOwner: remote.owner.login,
+        repositoryName: remote.name,
+        cloneUrl: remote.clone_url,
+        htmlUrl: remote.html_url,
+        defaultBranch: remote.default_branch,
+        visibility: remote.private ? Visibility.PRIVATE : Visibility.PUBLIC,
+        isConnected: true,
+        lastSync: new Date(),
+        latestCommitSha: latestCommit?.sha ?? null,
+        latestCommitMessage: latestCommit?.commit.message ?? null,
+        latestCommitAuthor: latestCommit?.commit.author?.name ?? null,
+        latestCommitDate: latestCommit?.commit.author?.date
+          ? new Date(latestCommit.commit.author.date)
+          : null,
+      },
     });
+
+    await this.prisma.project.update({
+      where: { id: projectId },
+      data: {
+        repositoryUrl: remote.html_url,
+        defaultBranch: remote.default_branch,
+      },
+    });
+
+    return updated;
   }
 
   async disconnect(projectId: string, userId: string) {
