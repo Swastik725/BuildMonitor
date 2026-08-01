@@ -114,7 +114,7 @@ export function ProjectDetailPage() {
           {tab === 'health' && <HealthTab projectId={project.id} />}
           {tab === 'incidents' && <IncidentsTab projectId={project.id} />}
           {tab === 'code-check' && <CodeCheckTab projectId={project.id} hasRepo={!!project.repository} />}
-          {tab === 'settings' && <SettingsTab project={project} onDeleted={() => navigate('/')} />}
+          {tab === 'settings' && <SettingsTab project={project} onDeleted={() => navigate('/')} onChange={load} />}
         </motion.div>
       </AnimatePresence>
     </Layout>
@@ -586,12 +586,42 @@ function CodeCheckTab({ projectId, hasRepo }: { projectId: string; hasRepo: bool
   );
 }
 
-function SettingsTab({ project, onDeleted }: { project: Project; onDeleted: () => void }) {
+function SettingsTab({ project, onDeleted, onChange }: { project: Project; onDeleted: () => void; onChange: () => void }) {
   const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [editName, setEditName] = useState(project.name);
+  const [editSlug, setEditSlug] = useState(project.slug);
+  const [editDescription, setEditDescription] = useState(project.description ?? '');
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [detailsSaved, setDetailsSaved] = useState(false);
+
+  const detailsDirty =
+    editName !== project.name || editSlug !== project.slug || editDescription !== (project.description ?? '');
+
   const canDelete = confirmText === project.slug;
+
+  const handleSaveDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingDetails(true);
+    setDetailsError(null);
+    setDetailsSaved(false);
+    try {
+      await projectsApi.update(project.id, {
+        name: editName,
+        slug: editSlug,
+        description: editDescription || undefined,
+      });
+      setDetailsSaved(true);
+      onChange();
+    } catch (err: any) {
+      setDetailsError(err.response?.data?.message || 'Could not update this project.');
+    } finally {
+      setSavingDetails(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!canDelete) return;
@@ -608,15 +638,56 @@ function SettingsTab({ project, onDeleted }: { project: Project; onDeleted: () =
 
   return (
     <div className="max-w-lg flex flex-col gap-4">
-      <GlassCard className="p-5">
+      <form onSubmit={handleSaveDetails}>
+      <GlassCard className="p-5" as="div">
         <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>Project details</p>
-        <div className="mt-3 flex flex-col gap-2 text-xs">
-          <div className="flex justify-between"><span style={{ color: 'var(--muted)' }}>Name</span><span style={{ color: 'var(--text)' }}>{project.name}</span></div>
-          <div className="flex justify-between"><span style={{ color: 'var(--muted)' }}>Slug</span><span className="font-mono" style={{ color: 'var(--text)' }}>{project.slug}</span></div>
-          <div className="flex justify-between"><span style={{ color: 'var(--muted)' }}>Visibility</span><span style={{ color: 'var(--text)' }}>{project.visibility}</span></div>
-          <div className="flex justify-between"><span style={{ color: 'var(--muted)' }}>Default branch</span><span className="font-mono" style={{ color: 'var(--text)' }}>{project.defaultBranch}</span></div>
+        <div className="mt-3 flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--muted)' }}>
+            Name
+            <input
+              value={editName}
+              onChange={e => { setEditName(e.target.value); setDetailsSaved(false); }}
+              required
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface-2)', color: 'var(--text)' }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--muted)' }}>
+            Slug
+            <input
+              value={editSlug}
+              onChange={e => { setEditSlug(e.target.value); setDetailsSaved(false); }}
+              required
+              className="rounded-md border px-3 py-2 text-sm font-mono"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface-2)', color: 'var(--text)' }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--muted)' }}>
+            Description
+            <textarea
+              value={editDescription}
+              onChange={e => { setEditDescription(e.target.value); setDetailsSaved(false); }}
+              rows={2}
+              placeholder="Optional"
+              className="rounded-md border px-3 py-2 text-sm resize-none"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface-2)', color: 'var(--text)' }}
+            />
+          </label>
+          <div className="flex justify-between text-xs"><span style={{ color: 'var(--muted)' }}>Visibility</span><span style={{ color: 'var(--text)' }}>{project.visibility}</span></div>
+          <div className="flex justify-between text-xs"><span style={{ color: 'var(--muted)' }}>Default branch</span><span className="font-mono" style={{ color: 'var(--text)' }}>{project.defaultBranch}</span></div>
         </div>
+        {detailsError && <p className="text-xs mt-3" style={{ color: 'var(--fail)' }}>{detailsError}</p>}
+        {detailsSaved && !detailsDirty && <p className="text-xs mt-3" style={{ color: 'var(--success)' }}>Saved.</p>}
+        <button
+          type="submit"
+          disabled={!detailsDirty || savingDetails}
+          className="w-full mt-4 rounded-md px-3 py-2 text-sm font-medium disabled:opacity-40"
+          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+        >
+          {savingDetails ? 'Saving…' : 'Save changes'}
+        </button>
       </GlassCard>
+      </form>
 
       <GlassCard className="p-5" style={{ borderColor: 'var(--fail)' }}>
         <p className="text-sm font-medium" style={{ color: 'var(--fail)' }}>Danger zone</p>

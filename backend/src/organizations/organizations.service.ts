@@ -6,11 +6,15 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { ProjectsService } from '../projects/projects.service';
 
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private projectsService: ProjectsService,
+  ) {}
 
   private async ensureMember(organizationId: string, userId: string) {
     const membership = await this.prisma.organizationMember.findUnique({
@@ -221,9 +225,28 @@ async transferOwnership(
   async delete(id: string, userId: string) {
     await this.ensureOwner(id, userId);
 
-    return this.prisma.organization.delete({
-      where: { id },
+    const projects = await this.prisma.project.findMany({
+      where: { organizationId: id },
+      include: { repository: true, environments: true },
     });
+
+    // Same story as project delete: members/projects/alerts/audit logs
+    // are all FK-RESTRICTed to the org, so this has to clear everything
+    // out first, in a transaction, before the org row itself can go.
+    await this.prisma.$transaction(async tx => {
+      for (const project of projects) {
+        await this.projectsService.cascadeDeleteProject(tx, project);
+      }
+
+      await tx.alert.deleteMany({ where: { organizationId: id } });
+      await tx.auditLog.deleteMany({ where: { organizationId: id } });
+      await tx.organizationMember.deleteMany({ where: { organizationId: id } });
+      await tx.organization.delete({ where: { id } });
+    });
+
+    return {
+      message: 'Organization deleted successfully',
+    };
   }
 
   async addMember(

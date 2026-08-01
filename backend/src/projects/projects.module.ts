@@ -7,5 +7,6 @@ import { AuthModule } from '../auth/auth.module';
   controllers: [ProjectsController],
   providers: [ProjectsService],
   imports: [AuthModule],
+  exports: [ProjectsService],
 })
 export class ProjectsModule {}

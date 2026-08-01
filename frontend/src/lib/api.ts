@@ -126,6 +126,8 @@ export const orgsApi = {
   list: () => api.get<Organization[]>('/organizations'),
   create: (data: { name: string; slug: string }) => api.post<Organization>('/organizations', data),
   get: (id: string) => api.get<Organization>(`/organizations/${id}`),
+  update: (id: string, data: { name?: string; slug?: string }) => api.patch<Organization>(`/organizations/${id}`, data),
+  delete: (id: string) => api.delete(`/organizations/${id}`),
 };
 
 // ---- Projects ----
@@ -134,6 +136,8 @@ export const projectsApi = {
   get: (id: string) => api.get<Project>(`/projects/${id}`),
   create: (data: { name: string; slug: string; organizationId: string; visibility: 'PRIVATE' | 'PUBLIC'; defaultBranch: string }) =>
     api.post<Project>('/projects', data),
+  update: (id: string, data: { name?: string; slug?: string; description?: string }) =>
+    api.patch<Project>(`/projects/${id}`, data),
   delete: (id: string) => api.delete(`/projects/${id}`),
 };
 
